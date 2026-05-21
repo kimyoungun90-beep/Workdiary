@@ -1,19 +1,20 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'POST only' });
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "POST only" });
   }
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return res.status(500).json({
-        error: 'OPENAI_API_KEY 환경변수가 없습니다. Vercel Settings > Environment Variables에 등록하세요.'
+        error:
+          "GEMINI_API_KEY 환경변수가 없습니다. Vercel Settings > Environment Variables에 등록하세요."
       });
     }
 
     const body = req.body || {};
-    const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
     const systemPrompt = `
 너는 삼성전자 코스트코 채널 현장관리자의 업무일지를 작성하는 도우미다.
@@ -28,6 +29,7 @@ export default async function handler(req, res) {
 - 문체는 간결한 업무보고체로 작성한다.
 - 과장된 표현은 쓰지 않는다.
 - 삼성전자 / 코스트코 현장관리자 업무보고 스타일로 작성한다.
+- 최종 답변에는 설명문, 인사말, 안내문을 쓰지 않는다.
 
 [기본 작성 형식]
 1) 업무유형
@@ -64,27 +66,34 @@ export default async function handler(req, res) {
 `;
 
     const userPrompt = buildPrompt(body);
+    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
 
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
+    const url =
+      "https://generativelanguage.googleapis.com/v1beta/models/" +
+      encodeURIComponent(model) +
+      ":generateContent?key=" +
+      encodeURIComponent(apiKey);
+
+    const response = await fetch(url, {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model,
-        input: [
+        contents: [
           {
-            role: 'system',
-            content: systemPrompt
-          },
-          {
-            role: 'user',
-            content: userPrompt
+            role: "user",
+            parts: [
+              {
+                text: fullPrompt
+              }
+            ]
           }
         ],
-        temperature: 0.35,
-        max_output_tokens: 2500
+        generationConfig: {
+          temperature: 0.35,
+          maxOutputTokens: 2500
+        }
       })
     });
 
@@ -92,12 +101,14 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: data?.error?.message || 'OpenAI API 호출 실패',
+        error:
+          data?.error?.message ||
+          "Gemini API 호출 실패. API 키, 모델명, 무료 한도를 확인하세요.",
         detail: data
       });
     }
 
-    const text = extractOutputText(data);
+    const text = extractGeminiText(data);
 
     return res.status(200).json({
       text
@@ -110,8 +121,8 @@ export default async function handler(req, res) {
 }
 
 function buildPrompt(body) {
-  const styleMode = body.styleMode || '보고용 정리';
-  const manager = body.manager || '';
+  const styleMode = body.styleMode || "보고용 정리";
+  const manager = body.manager || "";
   const visits = body.visits || [];
   const tasks = body.tasks || [];
 
@@ -161,24 +172,10 @@ ${JSON.stringify(tasks, null, 2)}
 `;
 }
 
-function extractOutputText(data) {
-  if (typeof data.output_text === 'string') {
-    return data.output_text;
-  }
-
-  const chunks = [];
-
-  for (const item of data.output || []) {
-    for (const content of item.content || []) {
-      if (content.type === 'output_text' && content.text) {
-        chunks.push(content.text);
-      }
-
-      if (content.type === 'text' && content.text) {
-        chunks.push(content.text);
-      }
-    }
-  }
-
-  return chunks.join('\n').trim();
+function extractGeminiText(data) {
+  const parts = data?.candidates?.[0]?.content?.parts || [];
+  return parts
+    .map((part) => part.text || "")
+    .join("\n")
+    .trim();
 }

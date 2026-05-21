@@ -1,38 +1,44 @@
-# AI 업무일지 자동 작성기 1차 버전
+# 업무일지 AI 자동 작성기 v3 검증본
 
-## 기능
-- 담당자 선택: 김영언, 심창보, 김현래, 조재현, 윤재경
-- 업무유형 선택: 진열 점검, VOC 처리, 상담사 면담, 큐레이터 면담, 거래선 미팅, 행사 공유, 매출 리뷰, 교육 등
-- 작성 스타일 선택: 기본 업무일지, 보고용 정리, 임원 보고용, 주간동향 보고용, 간단 요약형, 상세 기록형
-- 방문 순서 / 상담사 / 큐레이터 / 출근 특이사항 입력
-- AI 업무내용 자동 작성
-- 업무일지 빈 양식에 날짜, 담당자, 매출현황, 중점 추진 업무, 업무내용, 금일 활동계획, 보고사항 자동 반영
-- 엑셀 다운로드
+## 파일 구조
 
-## Vercel 환경변수
-Vercel 프로젝트 Settings > Environment Variables에 아래 값을 추가하세요.
-
-```text
-OPENAI_API_KEY=본인 OpenAI API 키
-OPENAI_MODEL=gpt-4.1-mini
+```
+index.html
+package.json
+api/generate-diary.js
+README.md
+VERIFIED_FILE_CHECK.txt
 ```
 
-`OPENAI_MODEL`은 선택사항입니다. 다른 모델을 쓰려면 이 값만 변경하면 됩니다.
+이번 버전은 app.js를 없애고, 화면/스크립트/CSS를 index.html 한 파일에 넣었습니다.
+GitHub 업로드 때 index.html과 app.js가 뒤바뀌는 문제를 막기 위한 구조입니다.
 
-## 사용 순서
-1. 이 폴더를 GitHub 저장소에 업로드
-2. Vercel에 연결
-3. Vercel 환경변수 `OPENAI_API_KEY` 등록
-4. 웹앱 접속
-5. `양식 내용 미작성.xlsx` 업로드
-6. `코스트코_CE_MX_실적_자동취합.xlsx` 업로드
-7. 방문지와 업무내용 입력
-8. `AI 업무내용 생성`
-9. 필요 시 문장 수정
-10. `엑셀 생성`
+## Vercel 환경변수
 
-## 현재 1차 버전 기준
-- 매출 파일은 `보고용_요약` 시트의 헤더가 있는 구조를 기준으로 읽습니다.
-- 매출현황은 선택한 담당자 기준으로 필터링합니다.
-- 양식 내 위치는 현재 업로드한 업무일지 양식을 기준으로 잡았습니다.
-- 업무내용은 AI 생성 후 사용자가 직접 수정할 수 있습니다.
+Vercel > Project > Settings > Environment Variables에서 아래 값을 추가하세요.
+
+```
+OPENAI_API_KEY = 발급받은 OpenAI API 키
+OPENAI_MODEL = gpt-4.1-mini
+```
+
+OPENAI_MODEL은 비워도 기본값 gpt-4.1-mini로 작동합니다.
+
+## 업로드 방법
+
+1. ZIP 압축을 풉니다.
+2. GitHub 저장소 최상단에 아래 파일들이 보이도록 업로드합니다.
+   - index.html
+   - package.json
+   - api/generate-diary.js
+   - README.md
+   - VERIFIED_FILE_CHECK.txt
+3. GitHub에서 Commit changes를 누릅니다.
+4. Vercel에서 Redeploy 합니다.
+
+## 정상 확인
+
+- Vercel 화면에 코드가 그대로 보이면 index.html이 잘못 올라간 것입니다.
+- 정상 화면 첫 제목은 `업무일지 AI 자동 작성기` 입니다.
+- package.json 첫 글자는 반드시 `{` 여야 합니다.
+- index.html 첫 줄은 반드시 `<!doctype html>` 이어야 합니다.

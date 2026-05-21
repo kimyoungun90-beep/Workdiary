@@ -1,451 +1,502 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>업무일지 AI 자동 작성기</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --bg:#f5f7fb;--card:#ffffff;--ink:#172033;--muted:#667085;--line:#d7dce7;
+      --green:#0b7a4b;--green2:#0f9f64;--navy:#18243d;--soft:#eef7f2;--red:#c0392b;
+      --shadow:0 12px 30px rgba(16,24,40,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Arial,'Noto Sans KR',sans-serif;line-height:1.5}
+    header{background:linear-gradient(135deg,var(--navy),#0b5d3d);color:#fff;padding:26px 20px}
+    header .wrap{max-width:1180px;margin:0 auto}
+    h1{margin:0;font-size:28px;letter-spacing:-.5px}
+    header p{margin:8px 0 0;color:#dfeee7;font-size:14px}
+    main{max-width:1180px;margin:20px auto 60px;padding:0 16px}
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+    .col-12{grid-column:span 12}.col-8{grid-column:span 8}.col-6{grid-column:span 6}.col-4{grid-column:span 4}.col-3{grid-column:span 3}
+    h2{font-size:17px;margin:0 0 14px;display:flex;align-items:center;gap:8px}
+    h2 span{background:var(--soft);color:var(--green);border-radius:999px;padding:3px 9px;font-size:12px}
+    label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:10px 0 6px}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;color:var(--ink);font-size:14px;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:var(--green2);box-shadow:0 0 0 3px rgba(15,159,100,.12)}
+    textarea{min-height:96px;resize:vertical;white-space:pre-wrap}
+    .row{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;align-items:end}
+    .r3{grid-column:span 3}.r4{grid-column:span 4}.r5{grid-column:span 5}.r6{grid-column:span 6}.r8{grid-column:span 8}.r12{grid-column:span 12}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    button{border:0;border-radius:12px;padding:10px 14px;background:var(--navy);color:#fff;font-weight:700;cursor:pointer}
+    button:hover{filter:brightness(1.08)}
+    button.secondary{background:#e9edf5;color:#1f2937}
+    button.green{background:var(--green)}
+    button.danger{background:#fcecea;color:#a7372e}
+    .pill{display:inline-flex;align-items:center;gap:6px;background:#f1f5f9;border:1px solid #dbe2ea;border-radius:999px;padding:6px 10px;font-size:12px;color:#475467;margin:4px 4px 0 0}
+    .visit,.task{border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#fbfcff}
+    .section-note{font-size:12px;color:var(--muted);margin-top:-6px;margin-bottom:10px}
+    .status{font-size:13px;color:var(--muted);margin-top:8px;white-space:pre-wrap}
+    .status.ok{color:var(--green)}.status.err{color:var(--red)}
+    .output{min-height:430px;font-family:'Consolas','Noto Sans KR',monospace;font-size:13px;line-height:1.55;background:#fbfcff}
+    .small{font-size:12px;color:var(--muted)}
+    .preview-box{background:#fbfcff;border:1px dashed var(--line);border-radius:12px;padding:12px;min-height:44px;white-space:pre-wrap;font-size:13px;color:#344054}
+    @media(max-width:860px){.col-8,.col-6,.col-4,.col-3{grid-column:span 12}.r3,.r4,.r5,.r6,.r8{grid-column:span 12}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>업무일지 AI 자동 작성기</h1>
+    <p>입력값은 사용자가 직접 넣고, 업무내용만 AI가 기존 업무일지 말투로 정리합니다.</p>
+  </div>
+</header>
+<main>
+  <div class="grid">
+    <section class="card col-12">
+      <h2><span>1</span>기본 정보</h2>
+      <div class="row">
+        <div class="r3"><label>작성일자 / 양식 C5</label><input id="writeDate" type="date"></div>
+        <div class="r3"><label>업무일자</label><input id="workDate" type="date"></div>
+        <div class="r3"><label>담당자 / 양식 G5</label><select id="manager"></select></div>
+        <div class="r3"><label>작성 스타일</label><select id="styleMode"></select></div>
+        <div class="r12"><label>주간 업무 목표 기간 / 양식 A7</label><input id="weekPeriod" placeholder="예: 1. 주간 업무 목표 [ 기간 : 5/18(월) ~ 5/24(일) ]"></div>
+      </div>
+    </section>
+
+    <section class="card col-6">
+      <h2><span>2</span>양식 / 매출 파일 업로드</h2>
+      <div class="section-note">업무일지 빈 양식과 매출 자동취합 파일을 올리면 엑셀 생성 시 자동 반영됩니다.</div>
+      <label>업무일지 빈 양식 파일</label>
+      <input id="templateFile" type="file" accept=".xlsx,.xlsm,.xls">
+      <label>매출 자동취합 파일</label>
+      <input id="salesFile" type="file" accept=".xlsx,.xlsm,.xls">
+      <div id="fileStatus" class="status">파일 대기 중</div>
+    </section>
+
+    <section class="card col-6">
+      <h2><span>3</span>중점 추진 업무 / 직접 입력</h2>
+      <textarea id="focusText" placeholder="예:&#10;■ 브랜드위크 홍보 집중&#10;   : 거래선 및 상담사 위주 가망 고객 확보 집중 요청"></textarea>
+      <div class="small">입력한 내용 그대로 엑셀 양식 C24부터 반영됩니다.</div>
+    </section>
+
+    <section class="card col-12">
+      <h2><span>4</span>방문 순서 / 출근 인원</h2>
+      <div id="visitsBox"></div>
+      <div class="btns"><button class="secondary" id="addVisitBtn" type="button">방문지 추가</button></div>
+    </section>
+
+    <section class="card col-12">
+      <h2><span>5</span>업무내용 입력</h2>
+      <div class="section-note">방문지, 업무유형, 이슈사항, 처리진행, 후속조치를 짧게 쓰면 AI가 업무일지 문장으로 정리합니다.</div>
+      <div id="tasksBox"></div>
+      <div class="btns"><button class="secondary" id="addTaskBtn" type="button">업무 추가</button></div>
+    </section>
+
+    <section class="card col-6">
+      <h2><span>6</span>금일 활동계획 / 직접 입력</h2>
+      <textarea id="todayPlan" placeholder="예:&#10;■ 사무실, 코스트코 혁신점 방문&#10;   : 상담사 면담&#10;   : 에어컨 운영 방향 공유"></textarea>
+    </section>
+
+    <section class="card col-6">
+      <h2><span>7</span>보고사항 및 특이사항 / 직접 입력</h2>
+      <textarea id="specialNote" placeholder="예:&#10;■ QLED 소진 점검 및 설치&철거 일정 조율&#10;■ 브랜드위크 일정 현장 공유"></textarea>
+    </section>
+
+    <section class="card col-12">
+      <h2><span>8</span>생성</h2>
+      <div class="btns">
+        <button id="sampleBtn" type="button" class="secondary">샘플 입력</button>
+        <button id="generateBtn" type="button" class="green">AI 업무내용 생성</button>
+        <button id="copyBtn" type="button" class="secondary">업무내용 복사</button>
+        <button id="excelBtn" type="button">엑셀 생성</button>
+      </div>
+      <div id="runStatus" class="status">준비 완료</div>
+    </section>
+
+    <section class="card col-12">
+      <h2><span>결과</span>AI 생성 업무내용</h2>
+      <textarea id="diaryOutput" class="output" placeholder="AI 생성 결과가 여기에 표시됩니다. 엑셀 생성 시 업무내용 영역에 반영됩니다."></textarea>
+    </section>
+  </div>
+</main>
+<script>
+'use strict';
+
 const MANAGERS = ["김영언", "심창보", "김현래", "조재현", "윤재경"];
 const STYLE_MODES = ["기본 업무일지", "보고용 정리", "임원 보고용", "주간동향 보고용", "간단 요약형", "상세 기록형"];
 const WORK_TYPES = [
-  "진열 점검", "VOC 처리", "상담사 면담", "큐레이터 면담", "거래선 미팅", "행사 공유", "매출 리뷰", "교육",
-  "신입 면담", "퇴직 면담", "거래선 상견례", "진열 변경 요청", "거래선 매출 요청", "재고 확인", "입고 확인",
-  "설치 일정 확인", "배송 지연 확인", "KSP 포탈 확인", "OB 콜 진행", "판매 스크립트 점검", "세일즈 코칭", "우군화 활동", "기타"
+  "진열 점검","VOC 처리","상담사 면담","큐레이터 면담","거래선 미팅","행사 공유","매출 리뷰","교육",
+  "신입 면담","퇴직 면담","거래선 상견례","진열 변경 요청","거래선 매출 요청","재고 확인","입고 확인",
+  "설치 일정 확인","배송 지연 확인","KSP 포탈 확인","OB 콜 진행","판매 스크립트 점검","세일즈 코칭","우군화 활동","기타"
 ];
 const PLACE_PRESETS = [
-  "사무실", "코스트코 세종점", "코스트코 대전점", "코스트코 대구점", "코스트코 혁신점",
-  "코스트코 양재점", "코스트코 광명점", "코스트코 공세점", "코스트코 평택점", "코스트코 상봉점",
-  "코스트코 하남점", "코스트코 양평점", "코스트코 의정부점", "코스트코 일산점", "코스트코 송도점",
-  "코스트코 고척점", "코스트코 청라점", "코스트코 천안점", "코스트코 부산점", "코스트코 울산점", "코스트코 김해점"
+  "사무실","코스트코 세종점","코스트코 대전점","코스트코 대구점","코스트코 혁신점","코스트코 양재점","코스트코 광명점",
+  "코스트코 공세점","코스트코 평택점","코스트코 상봉점","코스트코 하남점","코스트코 양평점","코스트코 의정부점",
+  "코스트코 일산점","코스트코 송도점","코스트코 고척점","코스트코 청라점","코스트코 천안점","코스트코 부산점",
+  "코스트코 울산점","코스트코 김해점","직접입력"
 ];
+const DEFAULT_STORES_BY_MANAGER = {
+  "김영언": ["세종점","대전점","대구점","혁신점"]
+};
 
 let visits = [];
 let tasks = [];
+let templateWorkbook = null;
+let salesWorkbook = null;
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-window.addEventListener("DOMContentLoaded", init);
+window.addEventListener('DOMContentLoaded', init);
 
-function init() {
-  fillSelect($("manager"), MANAGERS);
-  fillSelect($("styleMode"), STYLE_MODES);
-  fillDatalist();
+function init(){
+  fillSelect($('manager'), MANAGERS);
+  fillSelect($('styleMode'), STYLE_MODES);
   setDefaultDates();
-
   visits = [
-    { place: "사무실", consultants: "", curators: "", attendanceNote: "" },
-    { place: "코스트코 대구점", consultants: "", curators: "", attendanceNote: "" }
+    { place:'사무실', consultants:'', curators:'', attendanceNote:'' },
+    { place:'코스트코 대구점', consultants:'', curators:'', attendanceNote:'' }
   ];
-  tasks = [{ place: "코스트코 대구점", type: "진열 점검", issue: "", action: "", followUp: "", memo: "" }];
+  tasks = [
+    { place:'코스트코 대구점', type:'진열 점검', issue:'', action:'', followUp:'', memo:'' }
+  ];
   renderVisits();
   renderTasks();
 
-  $("addVisitBtn").addEventListener("click", () => { visits.push({ place: "", consultants: "", curators: "", attendanceNote: "" }); renderVisits(); });
-  $("addTaskBtn").addEventListener("click", () => { tasks.push({ place: "", type: "진열 점검", issue: "", action: "", followUp: "", memo: "" }); renderTasks(); });
-  $("generateBtn").addEventListener("click", generateDiary);
-  $("copyBtn").addEventListener("click", copyOutput);
-  $("excelBtn").addEventListener("click", createExcel);
-  $("sampleBtn").addEventListener("click", loadSample);
+  $('addVisitBtn').addEventListener('click', () => { visits.push({ place:'', consultants:'', curators:'', attendanceNote:'' }); renderVisits(); renderTasks(); });
+  $('addTaskBtn').addEventListener('click', () => { tasks.push({ place:'', type:'진열 점검', issue:'', action:'', followUp:'', memo:'' }); renderTasks(); });
+  $('sampleBtn').addEventListener('click', loadSample);
+  $('generateBtn').addEventListener('click', generateDiary);
+  $('copyBtn').addEventListener('click', copyOutput);
+  $('excelBtn').addEventListener('click', createExcel);
+  $('templateFile').addEventListener('change', e => loadWorkbookFile(e, 'template'));
+  $('salesFile').addEventListener('change', e => loadWorkbookFile(e, 'sales'));
 }
 
-function fillSelect(select, values) {
-  select.innerHTML = values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+function fillSelect(select, values){
+  select.innerHTML = values.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
 }
 
-function fillDatalist() {
-  $("placeList").innerHTML = PLACE_PRESETS.map(v => `<option value="${escapeHtml(v)}"></option>`).join("");
-}
-
-function setDefaultDates() {
+function setDefaultDates(){
   const today = new Date();
   const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, "0");
-  const dd = String(today.getDate()).padStart(2, "0");
-  $("writeDate").value = `${yyyy}-${mm}-${dd}`;
-  $("workDate").value = `${yyyy}-${mm}-${dd}`;
-  $("weekPeriod").value = getWeekPeriod(today);
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const dd = String(today.getDate()).padStart(2,'0');
+  $('writeDate').value = `${yyyy}-${mm}-${dd}`;
+  $('workDate').value = `${yyyy}-${mm}-${dd}`;
+  $('weekPeriod').value = `1. 주간 업무 목표 [ 기간 : ${getWeekPeriod(today)} ]`;
 }
 
-function getWeekPeriod(date) {
+function getWeekPeriod(date){
   const d = new Date(date);
   const day = d.getDay() || 7;
   const monday = new Date(d); monday.setDate(d.getDate() - day + 1);
   const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-  const week = ["일", "월", "화", "수", "목", "금", "토"];
-  const fmt = x => `${x.getMonth() + 1}/${x.getDate()}(${week[x.getDay()]})`;
+  const week = ['일','월','화','수','목','금','토'];
+  const fmt = x => `${x.getMonth()+1}/${x.getDate()}(${week[x.getDay()]})`;
   return `${fmt(monday)} ~ ${fmt(sunday)}`;
 }
 
-function renderVisits() {
-  $("visitsBox").innerHTML = visits.map((v, idx) => `
-    <div class="item">
-      <div class="item-head">
-        <span class="badge">${idx + 1}차 방문</span>
-        <button class="small remove" data-visit-remove="${idx}">삭제</button>
+function renderVisits(){
+  $('visitsBox').innerHTML = visits.map((v, idx) => `
+    <div class="visit">
+      <div class="row">
+        <div class="r3"><label>${idx+1}차 방문지</label><input list="placeList" data-visit="${idx}" data-field="place" value="${escapeHtml(v.place)}" placeholder="예: 코스트코 대구점"></div>
+        <div class="r3"><label>상담사</label><input data-visit="${idx}" data-field="consultants" value="${escapeHtml(v.consultants)}" placeholder="예: 홍길동, 김철수"></div>
+        <div class="r3"><label>큐레이터</label><input data-visit="${idx}" data-field="curators" value="${escapeHtml(v.curators)}" placeholder="예: 이영희"></div>
+        <div class="r3"><label>출근 특이사항</label><input data-visit="${idx}" data-field="attendanceNote" value="${escapeHtml(v.attendanceNote)}" placeholder="예: 전원 정상 출근"></div>
+        <div class="r12"><button class="danger" type="button" data-visit-remove="${idx}">삭제</button></div>
       </div>
-      <div class="item-grid">
-        <label>방문지
-          <input list="placeList" data-visit="${idx}" data-field="place" value="${escapeHtml(v.place)}" placeholder="예: 코스트코 대구점" />
-        </label>
-        <label>상담사
-          <input data-visit="${idx}" data-field="consultants" value="${escapeHtml(v.consultants)}" placeholder="예: 홍길동, 김철수" />
-        </label>
-        <label>큐레이터
-          <input data-visit="${idx}" data-field="curators" value="${escapeHtml(v.curators)}" placeholder="예: 이영희" />
-        </label>
-        <label>출근 특이사항
-          <input data-visit="${idx}" data-field="attendanceNote" value="${escapeHtml(v.attendanceNote)}" placeholder="예: 전원 정상 출근" />
-        </label>
-      </div>
-    </div>
-  `).join("");
-
-  document.querySelectorAll("[data-visit]").forEach(el => el.addEventListener("input", e => {
+    </div>`).join('') + `<datalist id="placeList">${PLACE_PRESETS.map(p=>`<option value="${escapeHtml(p)}"></option>`).join('')}</datalist>`;
+  document.querySelectorAll('[data-visit]').forEach(el => el.addEventListener('input', e => {
     const idx = Number(e.target.dataset.visit);
     visits[idx][e.target.dataset.field] = e.target.value;
-    if (e.target.dataset.field === "place") syncTaskPlaceOptions();
+    if(e.target.dataset.field === 'place') renderTasksPlaceOptions();
   }));
-  document.querySelectorAll("[data-visit-remove]").forEach(el => el.addEventListener("click", e => {
-    visits.splice(Number(e.target.dataset.visitRemove), 1);
-    renderVisits();
+  document.querySelectorAll('[data-visit-remove]').forEach(el => el.addEventListener('click', e => {
+    visits.splice(Number(e.target.dataset.visitRemove),1);
+    renderVisits(); renderTasks();
   }));
 }
 
-function renderTasks() {
-  $("tasksBox").innerHTML = tasks.map((t, idx) => `
-    <div class="item">
-      <div class="item-head">
-        <span class="badge">업무 ${idx + 1}</span>
-        <button class="small remove" data-task-remove="${idx}">삭제</button>
+function renderTasks(){
+  $('tasksBox').innerHTML = tasks.map((t, idx) => `
+    <div class="task">
+      <div class="row">
+        <div class="r3"><label>방문지</label><select data-task="${idx}" data-field="place" class="task-place">${placeOptions(t.place)}</select></div>
+        <div class="r3"><label>업무유형</label><select data-task="${idx}" data-field="type">${WORK_TYPES.map(w=>`<option ${w===t.type?'selected':''} value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('')}</select></div>
+        <div class="r6"><label>이슈사항</label><textarea data-task="${idx}" data-field="issue" placeholder="예: TV SYNC 불량 / UHD 75인치 배송 지연 VOC 강성 발생">${escapeHtml(t.issue)}</textarea></div>
+        <div class="r4"><label>처리 진행</label><textarea data-task="${idx}" data-field="action" placeholder="예: SYNC 재연결 조치 완료 / CM 소통 후 배송 일정 확인">${escapeHtml(t.action)}</textarea></div>
+        <div class="r4"><label>후속조치</label><textarea data-task="${idx}" data-field="followUp" placeholder="예: 재발 여부 추가 확인 예정">${escapeHtml(t.followUp)}</textarea></div>
+        <div class="r4"><label>추가 메모</label><textarea data-task="${idx}" data-field="memo" placeholder="선택 입력">${escapeHtml(t.memo)}</textarea></div>
+        <div class="r12"><button class="danger" type="button" data-task-remove="${idx}">삭제</button></div>
       </div>
-      <div class="item-grid task-grid">
-        <label>방문지
-          <input list="placeList" data-task="${idx}" data-field="place" value="${escapeHtml(t.place)}" placeholder="예: 코스트코 대구점" />
-        </label>
-        <label>업무유형
-          <select data-task="${idx}" data-field="type">${WORK_TYPES.map(type => `<option value="${escapeHtml(type)}" ${type === t.type ? "selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select>
-        </label>
-        <label>이슈사항
-          <textarea rows="3" data-task="${idx}" data-field="issue" placeholder="예: TV SYNC 불량">${escapeHtml(t.issue)}</textarea>
-        </label>
-        <label>처리 진행
-          <textarea rows="3" data-task="${idx}" data-field="action" placeholder="예: SYNC 재연결 조치 완료">${escapeHtml(t.action)}</textarea>
-        </label>
-        <label class="wide">후속조치
-          <textarea rows="3" data-task="${idx}" data-field="followUp" placeholder="예: 재발 여부 추가 확인 예정">${escapeHtml(t.followUp)}</textarea>
-        </label>
-        <label class="wide">추가 메모
-          <textarea rows="3" data-task="${idx}" data-field="memo" placeholder="필요 시 추가 입력">${escapeHtml(t.memo)}</textarea>
-        </label>
-      </div>
-    </div>
-  `).join("");
-
-  document.querySelectorAll("[data-task]").forEach(el => el.addEventListener("input", e => {
+    </div>`).join('');
+  document.querySelectorAll('[data-task]').forEach(el => el.addEventListener('input', e => {
     const idx = Number(e.target.dataset.task);
     tasks[idx][e.target.dataset.field] = e.target.value;
   }));
-  document.querySelectorAll("[data-task-remove]").forEach(el => el.addEventListener("click", e => {
-    tasks.splice(Number(e.target.dataset.taskRemove), 1);
+  document.querySelectorAll('[data-task-remove]').forEach(el => el.addEventListener('click', e => {
+    tasks.splice(Number(e.target.dataset.taskRemove),1);
     renderTasks();
   }));
 }
 
-function syncTaskPlaceOptions() {
-  const custom = visits.map(v => v.place).filter(Boolean);
-  const merged = [...new Set([...PLACE_PRESETS, ...custom])];
-  $("placeList").innerHTML = merged.map(v => `<option value="${escapeHtml(v)}"></option>`).join("");
+function renderTasksPlaceOptions(){
+  document.querySelectorAll('.task-place').forEach((select, idx) => {
+    const current = tasks[idx]?.place || select.value;
+    select.innerHTML = placeOptions(current);
+  });
 }
 
-async function generateDiary() {
-  setStatus("AI 업무내용 생성 중입니다...", "");
-  $("generateBtn").disabled = true;
-  try {
-    const payload = collectPayload();
-    const response = await fetch("/api/generate-diary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "AI 생성 실패");
-    $("aiOutput").value = data.text || "";
-    setStatus("AI 업무내용 생성 완료", "ok");
-  } catch (error) {
-    setStatus(error.message, "error");
-  } finally {
-    $("generateBtn").disabled = false;
+function placeOptions(current){
+  const places = [...new Set([...visits.map(v => v.place).filter(Boolean), ...PLACE_PRESETS])];
+  return places.map(p => `<option ${p===current?'selected':''} value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+}
+
+async function loadWorkbookFile(event, kind){
+  try{
+    const file = event.target.files[0];
+    if(!file) return;
+    if(!window.XLSX) throw new Error('XLSX 라이브러리를 불러오지 못했습니다. 인터넷 연결 또는 CDN 차단 여부를 확인하세요.');
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:'array', cellDates:true });
+    if(kind === 'template') templateWorkbook = wb;
+    if(kind === 'sales') salesWorkbook = wb;
+    updateFileStatus();
+  }catch(err){
+    setStatus('fileStatus', `파일 읽기 실패: ${err.message}`, true);
   }
 }
 
-function collectPayload() {
+function updateFileStatus(){
+  const msg = [
+    templateWorkbook ? '업무일지 양식: 업로드 완료' : '업무일지 양식: 대기',
+    salesWorkbook ? '매출 파일: 업로드 완료' : '매출 파일: 대기'
+  ].join('\n');
+  setStatus('fileStatus', msg, false);
+}
+
+function buildPayload(){
   return {
-    writeDate: $("writeDate").value,
-    workDate: $("workDate").value,
-    weekPeriod: $("weekPeriod").value,
-    manager: $("manager").value,
-    style: $("styleMode").value,
-    visits,
-    tasks,
-    focusText: $("focusText").value,
-    planText: $("planText").value,
-    specialText: $("specialText").value,
-    aiOutput: $("aiOutput").value
+    writeDate: $('writeDate').value,
+    workDate: $('workDate').value,
+    manager: $('manager').value,
+    styleMode: $('styleMode').value,
+    weekPeriod: $('weekPeriod').value,
+    visits: visits.filter(v => v.place || v.consultants || v.curators || v.attendanceNote),
+    tasks: tasks.filter(t => t.place || t.type || t.issue || t.action || t.followUp || t.memo),
+    focusText: $('focusText').value,
+    todayPlan: $('todayPlan').value,
+    specialNote: $('specialNote').value
   };
 }
 
-async function copyOutput() {
-  const text = $("aiOutput").value;
-  if (!text.trim()) return setStatus("복사할 AI 생성 내용이 없습니다.", "error");
-  await navigator.clipboard.writeText(text);
-  setStatus("AI 업무내용을 복사했습니다.", "ok");
-}
-
-async function createExcel() {
-  try {
-    const template = $("templateFile").files[0];
-    if (!template) throw new Error("업무일지 빈 양식 파일을 먼저 업로드해주세요.");
-
-    setStatus("엑셀 생성 중입니다...", "");
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(await template.arrayBuffer());
-    const ws = workbook.worksheets[0];
-    const payload = collectPayload();
-
-    fillBasicInfo(ws, payload);
-
-    const salesFile = $("salesFile").files[0];
-    if (salesFile) {
-      const salesData = await parseSalesFile(salesFile);
-      fillSalesSection(ws, salesData, payload.manager, $("salesUnit").value);
-    }
-
-    fillTextSections(ws, payload);
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    const fileDate = payload.workDate || new Date().toISOString().slice(0, 10);
-    downloadBlob(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `업무일지_${payload.manager}_${fileDate}.xlsx`);
-    setStatus("엑셀 업무일지를 생성했습니다.", "ok");
-  } catch (error) {
-    console.error(error);
-    setStatus(error.message, "error");
+async function generateDiary(){
+  const payload = buildPayload();
+  if(!payload.tasks.length){ setStatus('runStatus','업무내용을 1개 이상 입력해줘.', true); return; }
+  setStatus('runStatus','AI 업무내용 생성 중...', false);
+  try{
+    const res = await fetch('/api/generate-diary', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if(!res.ok) throw new Error(data.error || `AI 호출 실패 (${res.status})`);
+    $('diaryOutput').value = (data.diary || '').trim();
+    setStatus('runStatus','AI 업무내용 생성 완료', false);
+  }catch(err){
+    const fallback = makeRuleBasedDiary(payload);
+    $('diaryOutput').value = fallback;
+    setStatus('runStatus', `AI 호출 실패: ${err.message}\n임시 규칙 기반 문장으로 생성했습니다. OPENAI_API_KEY 설정 후 다시 생성하세요.`, true);
   }
 }
 
-function fillBasicInfo(ws, payload) {
-  const dateCell = ws.getCell("C5");
-  dateCell.value = payload.workDate ? new Date(`${payload.workDate}T00:00:00`) : "";
-  dateCell.numFmt = "m/d";
-  ws.getCell("G5").value = payload.manager || "";
-  ws.getCell("A7").value = `1. 주간 업무 목표 [ 기간 : ${payload.weekPeriod || ""} ]`;
-}
-
-async function parseSalesFile(file) {
-  const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: true });
-  const sheetName = wb.SheetNames.includes("보고용_요약") ? "보고용_요약" : wb.SheetNames[0];
-  const ws = wb.Sheets[sheetName];
-  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
-  const headerIndex = raw.findIndex(row => row.includes("담당") && row.includes("점포"));
-  if (headerIndex < 0) throw new Error("매출 파일에서 '보고용_요약' 헤더를 찾지 못했습니다.");
-  const headers = raw[headerIndex].map(h => String(h).trim());
-  return raw.slice(headerIndex + 1)
-    .filter(row => row.some(cell => cell !== "" && cell != null))
-    .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i]])));
-}
-
-function fillSalesSection(ws, rows, manager, unit) {
-  const managerRows = rows.filter(r => String(r["담당"]).trim() === manager && String(r["점포"]).trim() !== "총 매출");
-  const allStoreRows = rows.filter(r => !["", "전체"].includes(String(r["담당"]).trim()) && String(r["점포"]).trim() !== "총 매출");
-  if (managerRows.length === 0) throw new Error(`매출 파일에서 담당자 '${manager}' 데이터를 찾지 못했습니다.`);
-
-  const storeCount = managerRows.length;
-  const extra = Math.max(0, storeCount - 4);
-  if (extra > 0) insertBlankRows(ws, 17, extra);
-  const mxTitleRow = 17 + extra;
-  if (extra > 0) insertBlankRows(ws, mxTitleRow + 7, extra);
-
-  const rateFmt = "0.0%";
-  const moneyFmt = unit === "won" ? "#,##0" : "0.0";
-  const scale = unit === "won" ? 1000000 : 1;
-
-  writeSalesTable(ws, 10, "[CE 매출]", managerRows, allStoreRows, {
-    goal: "CE 목표", actual: "CE 실적", rate: "CE 달성률", rank: "CE 매출 순위", rateRank: "CE 달성률 순위"
-  }, scale, moneyFmt, rateFmt);
-
-  writeSalesTable(ws, mxTitleRow, "[MX 매출]", managerRows, allStoreRows, {
-    goal: "MX 목표", actual: "MX 실적", rate: "MX 달성률", rank: "MX 매출 순위", rateRank: "MX 달성률 순위"
-  }, scale, moneyFmt, rateFmt);
-}
-
-function writeSalesTable(ws, titleRow, title, managerRows, allRows, keys, scale, moneyFmt, rateFmt) {
-  const headers = ["점포명", "목표", "이번주 매출", "총 매출", "총 매출 \n순위", "목표 달성률", "목표 달성 \n순위"];
-  ws.getCell(titleRow, 3).value = title;
-  for (let i = 0; i < headers.length; i++) ws.getCell(titleRow + 1, 3 + i).value = headers[i];
-
-  const dataRows = managerRows.map(r => [
-    r["점포"],
-    num(r[keys.goal]) * scale,
-    num(r[keys.actual]) * scale,
-    num(r[keys.actual]) * scale,
-    r[keys.rank] || "",
-    num(r[keys.rate]),
-    r[keys.rateRank] || ""
-  ]);
-
-  const avgRow = [
-    "전국 평균",
-    avg(allRows, keys.goal) * scale,
-    avg(allRows, keys.actual) * scale,
-    avg(allRows, keys.actual) * scale,
-    "",
-    avg(allRows, keys.rate),
-    ""
-  ];
-
-  [...dataRows, avgRow].forEach((row, rIdx) => {
-    row.forEach((value, cIdx) => {
-      const cell = ws.getCell(titleRow + 2 + rIdx, 3 + cIdx);
-      cell.value = value;
-      if ([1, 2, 3].includes(cIdx)) cell.numFmt = moneyFmt;
-      if (cIdx === 5) cell.numFmt = rateFmt;
+function makeRuleBasedDiary(payload){
+  const byPlace = {};
+  payload.tasks.forEach(t => {
+    const place = t.place || '기타';
+    if(!byPlace[place]) byPlace[place] = [];
+    byPlace[place].push(t);
+  });
+  let out = [];
+  Object.entries(byPlace).forEach(([place, list], pIdx) => {
+    out.push(`${pIdx+1}. ${place}`);
+    out.push('');
+    const visit = payload.visits.find(v => v.place === place);
+    if(visit && (visit.consultants || visit.curators || visit.attendanceNote)){
+      out.push(` 1) 현장 출근 현황 점검`);
+      out.push(`   - 상담사 및 큐레이터 출근 현황 확인`);
+      if(visit.consultants) out.push(`   ㆍ 상담사 ${visit.consultants} 출근 확인`);
+      if(visit.curators) out.push(`   ㆍ 큐레이터 ${visit.curators} 출근 확인`);
+      if(visit.attendanceNote) out.push(`       → ${visit.attendanceNote}`);
+      out.push('');
+    }
+    list.forEach((t, i) => {
+      const n = (visit && (visit.consultants || visit.curators || visit.attendanceNote)) ? i+2 : i+1;
+      out.push(` ${n}) ${t.type || '업무 진행'}`);
+      out.push(`   - ${t.issue || '현장 업무 진행 사항 확인'}`);
+      if(t.action) out.push(`   ㆍ 처리 진행: ${t.action}`);
+      if(t.followUp) out.push(`       → ${t.followUp}`);
+      if(t.memo) out.push(`       : ${t.memo}`);
+      out.push('');
     });
   });
+  return out.join('\n').trim();
 }
 
-function fillTextSections(ws, payload) {
-  let focusRow = findRowByA(ws, "중점 추진");
-  let workRow = findRowByAExact(ws, "업무 내용");
-  let planRow = findRowByA(ws, "금일 활동");
-  let specialRow = findRowByA(ws, "보고 사항");
+function copyOutput(){
+  const val = $('diaryOutput').value;
+  if(!val){ setStatus('runStatus','복사할 업무내용이 없습니다.', true); return; }
+  navigator.clipboard.writeText(val).then(() => setStatus('runStatus','업무내용 복사 완료', false));
+}
 
-  const focusLines = toLines(payload.focusText);
-  if (focusLines.length && focusRow && workRow) {
-    const needed = focusLines.length;
-    const available = Math.max(0, workRow - focusRow - 1);
-    if (needed > available) insertBlankRows(ws, workRow, needed - available);
+function createExcel(){
+  try{
+    if(!window.XLSX) throw new Error('XLSX 라이브러리를 불러오지 못했습니다.');
+    if(!templateWorkbook) throw new Error('업무일지 빈 양식 파일을 먼저 업로드해줘.');
+    const wb = templateWorkbook;
+    const sheetName = wb.SheetNames[0];
+    const ws = wb.Sheets[sheetName];
+
+    writeCell(ws, 'C5', $('writeDate').value);
+    writeCell(ws, 'G5', $('manager').value);
+    writeCell(ws, 'A7', $('weekPeriod').value);
+
+    if(salesWorkbook) writeSalesBlock(ws, salesWorkbook, $('manager').value);
+    writeLines(ws, 'C24', $('focusText').value, 6);
+    clearRange(ws, 33, 87, 'C');
+    writeLines(ws, 'C33', $('diaryOutput').value || makeRuleBasedDiary(buildPayload()), 55);
+    writeLines(ws, 'C88', $('todayPlan').value, 6);
+    writeLines(ws, 'C94', $('specialNote').value, 8);
+
+    const fileName = `업무일지_${$('manager').value}_${$('writeDate').value || '작성일'}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    setStatus('runStatus', `엑셀 생성 완료: ${fileName}`, false);
+  }catch(err){
+    setStatus('runStatus', `엑셀 생성 실패: ${err.message}`, true);
   }
+}
 
-  workRow = findRowByAExact(ws, "업무 내용");
-  planRow = findRowByA(ws, "금일 활동");
-  specialRow = findRowByA(ws, "보고 사항");
-  focusRow = findRowByA(ws, "중점 추진");
+function writeSalesBlock(targetWs, salesWb, manager){
+  const ws = salesWb.Sheets['보고용_요약'] || salesWb.Sheets[salesWb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+  let filtered = rows.filter(r => String(r['담당']).trim() === manager && !String(r['점포']).includes('총 매출'));
+  const preferred = DEFAULT_STORES_BY_MANAGER[manager];
+  if(preferred) filtered = preferred.map(store => filtered.find(r => String(r['점포']).trim() === store)).filter(Boolean);
+  if(!filtered.length) return;
 
-  writeLines(ws, focusRow, 3, focusLines);
-
-  const aiLines = toLines(payload.aiOutput);
-  if (aiLines.length && workRow && planRow) {
-    const available = Math.max(0, planRow - workRow - 1);
-    if (aiLines.length > available) insertBlankRows(ws, planRow, aiLines.length - available);
-  }
-
-  planRow = findRowByA(ws, "금일 활동");
-  specialRow = findRowByA(ws, "보고 사항");
-  workRow = findRowByAExact(ws, "업무 내용");
-
-  writeLines(ws, workRow, 3, aiLines);
-  writeLines(ws, planRow, 3, toLines(payload.planText));
-  specialRow = findRowByA(ws, "보고 사항");
-  writeLines(ws, specialRow, 3, toLines(payload.specialText));
-
-  [focusRow, workRow, planRow, specialRow].forEach(row => {
-    if (!row) return;
-    for (let r = row; r < Math.min(row + 80, ws.rowCount + 1); r++) {
-      const cell = ws.getCell(r, 3);
-      cell.alignment = { ...(cell.alignment || {}), wrapText: true, vertical: "middle" };
-      if (cell.value) ws.getRow(r).height = Math.max(ws.getRow(r).height || 18, 18);
-    }
+  // CE table: C10:I16 / MX table: C17:I23, 기존 양식 구조 유지
+  writeCell(targetWs,'C10','[CE 매출]');
+  ['점포명','목표','이번주 매출','총 매출','총 매출 \n순위','목표 달성률','목표 달성 \n순위'].forEach((h,i)=>writeCell(targetWs, XLSX.utils.encode_cell({c:2+i,r:10}), h));
+  filtered.slice(0,4).forEach((r, idx) => {
+    const row = 11 + idx;
+    writeCell(targetWs, `C${row+1}`, r['점포']);
+    writeNumber(targetWs, `D${row+1}`, r['CE 목표']);
+    writeNumber(targetWs, `E${row+1}`, r['CE 실적']);
+    writeNumber(targetWs, `F${row+1}`, r['CE 실적']);
+    writeNumber(targetWs, `G${row+1}`, r['CE 매출 순위']);
+    writeNumber(targetWs, `H${row+1}`, r['CE 달성률']);
+    writeNumber(targetWs, `I${row+1}`, r['CE 달성률 순위']);
   });
+  writeCell(targetWs,'C16','전국 평균');
+  writeNumber(targetWs,'D16', avg(rows, manager, 'CE 목표', false));
+  writeNumber(targetWs,'E16', avg(rows, manager, 'CE 실적', false));
+  writeNumber(targetWs,'F16', avg(rows, manager, 'CE 실적', false));
+  writeNumber(targetWs,'H16', avg(rows, manager, 'CE 달성률', false));
+
+  writeCell(targetWs,'C17','[MX 매출]');
+  ['점포명','목표','이번주 매출','총 매출','총 매출 \n순위','목표 달성률','목표 달성 \n순위'].forEach((h,i)=>writeCell(targetWs, XLSX.utils.encode_cell({c:2+i,r:17}), h));
+  filtered.slice(0,4).forEach((r, idx) => {
+    const excelRow = 19 + idx;
+    writeCell(targetWs, `C${excelRow}`, r['점포']);
+    writeNumber(targetWs, `D${excelRow}`, r['MX 목표']);
+    writeNumber(targetWs, `E${excelRow}`, r['MX 실적']);
+    writeNumber(targetWs, `F${excelRow}`, r['MX 실적']);
+    writeNumber(targetWs, `G${excelRow}`, r['MX 매출 순위']);
+    writeNumber(targetWs, `H${excelRow}`, r['MX 달성률']);
+    writeNumber(targetWs, `I${excelRow}`, r['MX 달성률 순위']);
+  });
+  writeCell(targetWs,'C23','전국 평균');
+  writeNumber(targetWs,'D23', avg(rows, manager, 'MX 목표', false));
+  writeNumber(targetWs,'E23', avg(rows, manager, 'MX 실적', false));
+  writeNumber(targetWs,'F23', avg(rows, manager, 'MX 실적', false));
+  writeNumber(targetWs,'H23', avg(rows, manager, 'MX 달성률', false));
 }
 
-function toLines(text) {
-  return String(text || "").replace(/\r/g, "").split("\n").map(x => x.replace(/\s+$/g, "")).filter((x, i, arr) => x.trim() || (i > 0 && i < arr.length - 1));
+function avg(rows, manager, key){
+  const nums = rows.filter(r => String(r['담당']).trim() === manager && !String(r['점포']).includes('총 매출'))
+    .map(r => toNumber(r[key])).filter(n => Number.isFinite(n));
+  return nums.length ? nums.reduce((a,b)=>a+b,0)/nums.length : '';
 }
 
-function writeLines(ws, startRow, col, lines) {
-  if (!startRow || !lines || lines.length === 0) return;
-  for (let i = 0; i < lines.length; i++) {
-    const cell = ws.getCell(startRow + i, col);
-    cell.value = lines[i];
-    cell.alignment = { ...(cell.alignment || {}), wrapText: true, vertical: "middle" };
+function writeLines(ws, startAddr, text, maxLines){
+  const decoded = XLSX.utils.decode_cell(startAddr);
+  const lines = String(text || '').split(/\r?\n/).map(s => s.trimEnd()).filter((s, idx, arr) => s || idx < arr.length - 1);
+  for(let i=0; i<maxLines; i++){
+    const addr = XLSX.utils.encode_cell({ c: decoded.c, r: decoded.r + i });
+    writeCell(ws, addr, lines[i] || '');
   }
 }
 
-function findRowByA(ws, contains) {
-  for (let r = 1; r <= ws.rowCount; r++) {
-    const value = String(ws.getCell(r, 1).value || "").replace(/\s+/g, " ").trim();
-    if (value.includes(contains.replace(/\s+/g, " ").trim())) return r;
-  }
-  return null;
+function clearRange(ws, startRow, endRow, col){
+  for(let r=startRow; r<=endRow; r++) writeCell(ws, `${col}${r}`, '');
 }
 
-function findRowByAExact(ws, target) {
-  for (let r = 1; r <= ws.rowCount; r++) {
-    const value = String(ws.getCell(r, 1).value || "").replace(/\s+/g, " ").trim();
-    if (value === target) return r;
-  }
-  return null;
+function writeCell(ws, addr, value){
+  const cell = ws[addr] || {};
+  cell.t = 's';
+  cell.v = value == null ? '' : String(value);
+  ws[addr] = cell;
 }
 
-function insertBlankRows(ws, atRow, count) {
-  for (let i = 0; i < count; i++) ws.spliceRows(atRow, 0, []);
-  for (let r = atRow; r < atRow + count; r++) copyRowStyle(ws, atRow - 1, r);
+function writeNumber(ws, addr, value){
+  const n = toNumber(value);
+  if(value === '' || !Number.isFinite(n)){ writeCell(ws, addr, ''); return; }
+  const cell = ws[addr] || {};
+  cell.t = 'n';
+  cell.v = n;
+  ws[addr] = cell;
 }
 
-function copyRowStyle(ws, fromRow, toRow) {
-  const src = ws.getRow(fromRow);
-  const dst = ws.getRow(toRow);
-  dst.height = src.height;
-  for (let c = 1; c <= 9; c++) {
-    dst.getCell(c).style = JSON.parse(JSON.stringify(src.getCell(c).style || {}));
-  }
+function toNumber(v){
+  if(typeof v === 'number') return v;
+  const n = Number(String(v).replace(/,/g,''));
+  return n;
 }
 
-function num(value) {
-  const n = Number(String(value).replace(/,/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function avg(rows, key) {
-  const values = rows.map(r => num(r[key])).filter(n => Number.isFinite(n));
-  return values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-}
-
-function loadSample() {
-  $("manager").value = "김영언";
-  $("styleMode").value = "보고용 정리";
-  $("focusText").value = `■ UHD 75인치 배송 지연 VOC 처리\n   : 배송 일정 확인 및 고객 안내를 통한 VOC 확대 방지\n■ 브랜드위크 홍보 집중\n   : 상담사 및 거래선 대상 행사 일정 공유로 가망 고객 확보 요청`;
+function loadSample(){
+  $('manager').value = '김영언';
+  $('styleMode').value = '보고용 정리';
+  $('focusText').value = '■ 브랜드위크 홍보 집중\n   : 거래선 및 상담사 위주 가망 고객 확보 집중 요청\n■ QLED 진열 소진 점검 및 철거 일정 조율\n   : 진열 소진 여부 점검에 따른 설치 및 철거 요청 품의 작성';
+  $('todayPlan').value = '■ 사무실, 코스트코 혁신점 방문\n   : 상담사 면담\n   : 에어컨 운영 방향 공유\n   : 사무실 페이퍼 업무 및 각종 취합 진행';
+  $('specialNote').value = '■ QLED 소진 점검 및 설치&철거 일정 조율\n■ 브랜드위크 일정 현장 공유\n■ 창문형 에어컨 강성 VOC 발생 다수';
   visits = [
-    { place: "사무실", consultants: "", curators: "", attendanceNote: "페이퍼 업무 진행" },
-    { place: "코스트코 대구점", consultants: "김OO, 박OO", curators: "이OO", attendanceNote: "전원 정상 출근" },
-    { place: "코스트코 혁신점", consultants: "최OO", curators: "정OO", attendanceNote: "전원 정상 출근" }
+    { place:'사무실', consultants:'', curators:'', attendanceNote:'페이퍼 업무 및 취합 진행' },
+    { place:'코스트코 대구점', consultants:'홍길동', curators:'김수리', attendanceNote:'전원 정상 출근' },
+    { place:'코스트코 혁신점', consultants:'박상담', curators:'이큐레이터', attendanceNote:'현장 운영 특이사항 없음' }
   ];
   tasks = [
-    { place: "코스트코 대구점", type: "VOC 처리", issue: "UHD 75인치 배송 지연 VOC 강성 발생", action: "CM 소통으로 배송 일정 확인 및 고객 안내 완료", followUp: "배송 완료 여부 추가 확인 예정", memo: "" },
-    { place: "코스트코 혁신점", type: "진열 점검", issue: "TV SYNC 불량", action: "SYNC 재연결 조치 완료", followUp: "재발 여부 추가 확인 예정", memo: "" },
-    { place: "코스트코 대구점", type: "상담사 면담", issue: "브랜드위크 행사 일정 문의 증가", action: "상담사 대상 행사 일정 및 응대 방향 공유", followUp: "가망 고객 확보 현황 지속 확인 예정", memo: "" }
+    { place:'코스트코 대구점', type:'VOC 처리', issue:'UHD 75인치 배송 지연 VOC 강성 발생', action:'CM 소통을 통해 배송 일정 확인 및 고객 안내 진행', followUp:'배송 완료 여부 추가 확인 예정', memo:'' },
+    { place:'코스트코 혁신점', type:'진열 점검', issue:'TV SYNC 불량 확인', action:'SYNC 재연결 및 시연 영상 재점검 완료', followUp:'재발 여부 지속 확인 예정', memo:'' },
+    { place:'코스트코 혁신점', type:'상담사 면담', issue:'에어컨 행사 응대 방향 공유 필요', action:'Q9000에서 클래식 업셀링 세일즈 토크 공유', followUp:'차주 매출 반응 추가 확인 예정', memo:'' }
   ];
-  $("planText").value = `■ 사무실, 코스트코 대구점, 혁신점 방문\n   : VOC 처리 현황 확인\n   : 매장 진열 및 시연 상태 점검`;
-  $("specialText").value = `■ UHD 75인치 배송 지연 VOC 발생\n■ TV SYNC 불량 조치 완료`;
-  renderVisits();
-  renderTasks();
-  setStatus("샘플 데이터를 넣었습니다.", "ok");
+  renderVisits(); renderTasks();
+  setStatus('runStatus','샘플 입력 완료', false);
 }
 
-function setStatus(message, type) {
-  const el = $("status");
-  el.textContent = message || "";
-  el.className = `status ${type || ""}`;
+function setStatus(id, msg, isErr){
+  const el = $(id);
+  el.textContent = msg;
+  el.className = `status ${isErr ? 'err' : 'ok'}`;
 }
 
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 }
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+업무일지 AI 자동 작성기 v3 검증 결과
+
+검증 일시: 2026-05-21
+
+1) 파일 구조 검증
+- index.html 존재: OK
+- package.json 존재: OK
+- api/generate-diary.js 존재: OK
+- app.js 제거: OK
+
+2) 파일 내용 검증
+- index.html 첫 줄: <!doctype html> OK
+- package.json JSON 파싱: OK
+- api/generate-diary.js Node 문법 검사: OK
+- index.html 내부 스크립트 Node 문법 검사: OK
+
+3) 이전 오류 방지 조치
+- package.json에 HTML이 들어가는 문제 방지
+- index.html에 app.js 코드가 그대로 표시되는 문제 방지를 위해 app.js 파일 제거
+- 화면/CSS/클라이언트 스크립트는 index.html 한 파일로 통합
+- 서버 AI 호출만 api/generate-diary.js로 분리
+
+4) GitHub 업로드 후 정상 구조
+저장소 최상단:
+- index.html
+- package.json
+- README.md
+- VERIFIED_FILE_CHECK.txt
+- api 폴더
+
+api 폴더 내부:
+- generate-diary.js

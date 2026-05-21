@@ -1,9 +1,0 @@
-import fs from 'node:fs';
-
-const required = ['index.html', 'api/generate-diary.js', 'package.json', 'vercel.json'];
-const missing = required.filter((file) => !fs.existsSync(file));
-if (missing.length) {
-  console.error('Build check failed. Missing files:', missing.join(', '));
-  process.exit(1);
-}
-console.log('build ok: index.html exists / api/generate-diary.js exists / outputDirectory is root');

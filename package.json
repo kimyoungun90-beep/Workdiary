@@ -1,11 +1,103 @@
-{
-  "name": "costco-workdiary-ai-app",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "vercel dev",
-    "dev": "vercel dev"
-  },
-  "dependencies": {}
-}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI 업무일지 자동 작성기</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Costco Channel Work Diary</p>
+        <h1>AI 업무일지 자동 작성기</h1>
+        <p class="sub">양식 업로드 → 매출 요약 반영 → 업무내용 AI 생성 → 엑셀 다운로드</p>
+      </div>
+      <button id="sampleBtn" class="ghost">샘플 데이터 넣기</button>
+    </section>
+
+    <section class="card grid-4">
+      <label>작성일자
+        <input id="writeDate" type="date" />
+      </label>
+      <label>업무일자
+        <input id="workDate" type="date" />
+      </label>
+      <label>주간기간
+        <input id="weekPeriod" type="text" placeholder="예: 5/18(월) ~ 5/24(일)" />
+      </label>
+      <label>담당자
+        <select id="manager"></select>
+      </label>
+      <label>작성 스타일
+        <select id="styleMode"></select>
+      </label>
+      <label>매출 단위
+        <select id="salesUnit">
+          <option value="won">원 단위로 변환</option>
+          <option value="million">백만원 단위 유지</option>
+        </select>
+      </label>
+      <label>업무일지 빈 양식
+        <input id="templateFile" type="file" accept=".xlsx" />
+      </label>
+      <label>매출 자동취합 파일
+        <input id="salesFile" type="file" accept=".xlsx,.xls" />
+      </label>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>중점 추진 업무</h2>
+        <span>입력한 내용 그대로 양식에 반영</span>
+      </div>
+      <textarea id="focusText" rows="6" placeholder="예: ■ 브랜드위크 홍보 집중\n   : 거래선 및 상담사 위주 가망 고객 확보 집중 요청"></textarea>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>방문 순서 / 출근 인원</h2>
+        <button id="addVisitBtn" class="small">방문지 추가</button>
+      </div>
+      <div id="visitsBox" class="stack"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>업무내용 입력</h2>
+        <button id="addTaskBtn" class="small">업무 추가</button>
+      </div>
+      <div id="tasksBox" class="stack"></div>
+    </section>
+
+    <section class="card grid-2">
+      <label>금일 활동계획
+        <textarea id="planText" rows="7" placeholder="입력한 내용 그대로 양식에 반영"></textarea>
+      </label>
+      <label>보고사항 및 특이사항
+        <textarea id="specialText" rows="7" placeholder="입력한 내용 그대로 양식에 반영"></textarea>
+      </label>
+    </section>
+
+    <section class="card result-card">
+      <div class="section-title">
+        <h2>AI 생성 업무내용</h2>
+        <div class="actions">
+          <button id="generateBtn">AI 업무내용 생성</button>
+          <button id="copyBtn" class="ghost">복사</button>
+          <button id="excelBtn" class="primary">엑셀 생성</button>
+        </div>
+      </div>
+      <textarea id="aiOutput" rows="18" placeholder="AI 생성 결과가 여기에 표시됩니다. 직접 수정 후 엑셀 생성도 가능합니다."></textarea>
+      <p id="status" class="status"></p>
+    </section>
+  </main>
+
+  <datalist id="placeList"></datalist>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

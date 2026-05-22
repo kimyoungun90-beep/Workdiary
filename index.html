@@ -523,129 +523,346 @@
       showGenerateMessage("결과 복사 완료", "success");
     }
 
-    async function createExcel() {
-      try {
-        if (!templateArrayBuffer) throw new Error("업무일지 빈 양식을 먼저 업로드하세요.");
-        if (typeof XlsxPopulate === "undefined") throw new Error("엑셀 생성 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.");
-        const workbook = await XlsxPopulate.fromDataAsync(templateArrayBuffer);
-        const sheet = workbook.sheet(0);
+async function createExcel() {
+  try {
+    if (!templateArrayBuffer) throw new Error("업무일지 빈 양식을 먼저 업로드하세요.");
+    if (typeof XlsxPopulate === "undefined") throw new Error("엑셀 생성 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.");
 
-        sheet.cell("C5").value(formatDateDot($("writeDate").value));
-        sheet.cell("G5").value($("manager").value);
-        sheet.cell("A7").value($("weekPeriod").value);
+    const workbook = await XlsxPopulate.fromDataAsync(templateArrayBuffer);
+    const sheet = workbook.sheet(0);
 
-        writeSalesToSheet(sheet);
-        sheet.cell("C24").value($("priorityWork").value || "");
-        sheet.cell("C33").value(getOutputText() || "");
-        sheet.cell("C88").value($("todayPlan").value || "");
-        sheet.cell("C94").value($("specialNote").value || "");
+    // 기본 정보
+    sheet.cell("C5").value(formatDateDot($("writeDate").value));
+    sheet.cell("G5").value($("manager").value);
+    sheet.cell("A7").value(`1. 주간 업무 목표 [ 기간 : ${$("weekPeriod").value} ]`);
 
-        const blob = await workbook.outputAsync({ type:"blob" });
-        const manager = $("manager").value || "담당자";
-        const date = $("workDate").value || $("writeDate").value || "업무일자";
-        downloadBlob(blob, `업무일지_${manager}_${date}.xlsx`);
-        showGenerateMessage("엑셀 생성 완료: 양식과 매출현황 스타일을 반영했습니다.", "success");
-      } catch (err) {
-        showGenerateMessage(err?.message || String(err), "error");
-      }
-    }
+    // 상단 기본 스타일 보정
+    applyBaseSheetStyle(sheet);
 
-    function writeSalesToSheet(sheet) {
-      const rows = getFilteredSalesRows();
-      sheet.cell("C10").value("[CE 매출]");
-      writeHeader(sheet, 11);
-      sheet.cell("C17").value("[MX 매출]");
-      writeHeader(sheet, 18);
+    // 매출현황 스타일 포함 작성
+    writeSalesToSheet(sheet);
 
-      const ceRows = rows.slice(0, 4);
-      ceRows.forEach((r, i) => writeCeRow(sheet, 12 + i, r));
-      writeCeAverage(sheet, 16);
+    // 중점 추진 업무 / 업무내용 / 활동계획 / 특이사항
+    sheet.cell("C24").value($("priorityWork").value || "");
+    sheet.cell("C33").value(getOutputText() || "");
+    sheet.cell("C88").value($("todayPlan").value || "");
+    sheet.cell("C94").value($("specialNote").value || "");
 
-      const mxRows = rows.slice(0, 4);
-      mxRows.forEach((r, i) => writeMxRow(sheet, 19 + i, r));
-      writeMxAverage(sheet, 23);
-    }
+    // 텍스트 영역 스타일
+    styleTextArea(sheet, "C24:I29");
+    styleTextArea(sheet, "C33:I86");
+    styleTextArea(sheet, "C88:I92");
+    styleTextArea(sheet, "C94:I99");
 
-    function writeHeader(sheet, row) {
-      const headers = ["점포명", "목표", "이번주 매출", "총 매출", "총 매출 순위", "목표 달성률", "목표 달성 순위"];
-      headers.forEach((h, i) => sheet.cell(row, 3 + i).value(h));
-    }
+    const blob = await workbook.outputAsync({ type: "blob" });
+    const manager = $("manager").value || "담당자";
+    const date = $("workDate").value || $("writeDate").value || "업무일자";
 
-    function writeCeRow(sheet, row, r) {
-      sheet.cell(row, 3).value(r.store);
-      sheet.cell(row, 4).value(toWon(r.ceTarget));
-      sheet.cell(row, 5).value("");
-      sheet.cell(row, 6).value(toWon(r.ceSales));
-      sheet.cell(row, 7).value(blankZero(r.ceRank));
-      sheet.cell(row, 8).value(blankZero(r.ceRate));
-      sheet.cell(row, 9).value(blankZero(r.ceRateRank));
-    }
+    downloadBlob(blob, `업무일지_${manager}_${date}.xlsx`);
+    showGenerateMessage("엑셀 생성 완료: 매출현황 색상/구분 스타일을 반영했습니다.", "success");
+  } catch (err) {
+    showGenerateMessage(err?.message || String(err), "error");
+  }
+}
 
-    function writeMxRow(sheet, row, r) {
-      sheet.cell(row, 3).value(r.store);
-      sheet.cell(row, 4).value(toWon(r.mxTarget));
-      sheet.cell(row, 5).value("");
-      sheet.cell(row, 6).value(toWon(r.mxSales));
-      sheet.cell(row, 7).value(blankZero(r.mxRank));
-      sheet.cell(row, 8).value(blankZero(r.mxRate));
-      sheet.cell(row, 9).value(blankZero(r.mxRateRank));
-    }
+function applyBaseSheetStyle(sheet) {
+  // 전체 기본 폰트
+  sheet.usedRange().style({
+    fontFamily: "맑은 고딕",
+    fontSize: 10,
+    verticalAlignment: "center"
+  });
 
-    function writeCeAverage(sheet, row) {
-      const all = rawSalesRows.filter(r => r.store && r.store !== "총 매출");
-      sheet.cell(row, 3).value("전국 평균");
-      sheet.cell(row, 4).value(toWon(avg(all.map(r => r.ceTarget))));
-      sheet.cell(row, 5).value("");
-      sheet.cell(row, 6).value(toWon(avg(all.map(r => r.ceSales))));
-      sheet.cell(row, 7).value("");
-      sheet.cell(row, 8).value(avg(all.map(r => r.ceRate)));
-      sheet.cell(row, 9).value("");
-    }
+  // 제목
+  sheet.cell("C3").value("매니저 업무 일지");
+  sheet.range("B2:I4").style({
+    bold: true,
+    horizontalAlignment: "center",
+    verticalAlignment: "center",
+    fontSize: 14,
+    border: true
+  });
 
-    function writeMxAverage(sheet, row) {
-      const all = rawSalesRows.filter(r => r.store && r.store !== "총 매출");
-      sheet.cell(row, 3).value("전국 평균");
-      sheet.cell(row, 4).value(toWon(avg(all.map(r => r.mxTarget))));
-      sheet.cell(row, 5).value("");
-      sheet.cell(row, 6).value(toWon(avg(all.map(r => r.mxSales))));
-      sheet.cell(row, 7).value("");
-      sheet.cell(row, 8).value(avg(all.map(r => r.mxRate)));
-      sheet.cell(row, 9).value("");
-    }
+  // 날짜/이름 라인
+  sheet.range("B5:I6").style({
+    border: true,
+    horizontalAlignment: "center",
+    verticalAlignment: "center"
+  });
 
-    function showGenerateMessage(message, type) {
-      const el = $("generateMessage");
-      el.textContent = message;
-      el.className = "status";
-      if (type === "success") el.classList.add("success");
-      else if (type === "error") el.classList.add("danger");
-      else if (type === "warn") el.classList.add("warn");
-      else el.style.color = "#2563eb";
-    }
+  sheet.range("B5:B6").style({ bold: true, fill: "EDEDED" });
+  sheet.range("E5:E6").style({ bold: true, fill: "EDEDED" });
+  sheet.cell("B5").value("날짜");
+  sheet.cell("E5").value("이름");
 
-    function num(v) {
-      if (v === null || v === undefined || v === "") return 0;
-      const n = Number(String(v).replace(/,/g, ""));
-      return Number.isFinite(n) ? n : 0;
-    }
+  // 주간 업무 목표 라인
+  sheet.range("A7:I7").style({
+    bold: true,
+    border: true,
+    horizontalAlignment: "left",
+    verticalAlignment: "center"
+  });
 
-    function avg(arr) {
-      const valid = arr.filter(v => Number.isFinite(v) && v !== 0);
-      if (!valid.length) return 0;
-      return valid.reduce((a, b) => a + b, 0) / valid.length;
-    }
+  // 큰 구분 테두리
+  sheet.range("B8:I23").style({ border: true });
+  sheet.range("B24:I29").style({ border: true });
+  sheet.range("B30:I86").style({ border: true });
+  sheet.range("B87:I92").style({ border: true });
+  sheet.range("B93:I99").style({ border: true });
+}
 
-    function toWon(millionValue) { return Math.round(num(millionValue) * 1000000); }
-    function blankZero(v) { return v === 0 ? "" : v; }
-    function fmtMoneyM(v) { return num(v) ? `${num(v).toLocaleString(undefined, { maximumFractionDigits:1 })}백만` : "-"; }
-    function fmtPct(v) { return num(v) ? `${(num(v) * 100).toFixed(1)}%` : "-"; }
-    function fmtRank(v) { return num(v) ? `${Math.round(num(v))}` : "-"; }
+function writeSalesToSheet(sheet) {
+  const rows = getFilteredSalesRows();
 
-    function formatDateDot(value) {
-      if (!value) return "";
-      const [y, m, d] = value.split("-");
-      return y && m && d ? `${y}.${m}.${d}` : value;
-    }
+  // 매출 현황 영역 초기화
+  sheet.range("B8:I23").style({
+    border: true,
+    fontFamily: "맑은 고딕",
+    fontSize: 10,
+    verticalAlignment: "center"
+  });
+
+  // 상단 분류/제목
+  sheet.cell("B8").value("분류");
+  sheet.range("C8:I8").merged(true).value("매출 및 업무 계획");
+
+  sheet.range("B8:I8").style({
+    bold: true,
+    fill: "EDEDED",
+    horizontalAlignment: "center",
+    verticalAlignment: "center",
+    border: true
+  });
+
+  // 왼쪽 매출 현황 라벨
+  sheet.range("B9:B23").merged(true).value("매출 현황");
+  sheet.range("B9:B23").style({
+    bold: true,
+    horizontalAlignment: "center",
+    verticalAlignment: "center",
+    border: true
+  });
+
+  // CE / MX 구분 제목
+  sheet.range("C10:I10").merged(true).value("[CE 매출]");
+  sheet.range("C17:I17").merged(true).value("[MX 매출]");
+
+  styleSectionTitle(sheet, "C10:I10");
+  styleSectionTitle(sheet, "C17:I17");
+
+  // 헤더
+  writeSalesHeader(sheet, 11);
+  writeSalesHeader(sheet, 18);
+
+  // 전국 평균 계산
+  const allStores = rawSalesRows.filter(r => r.store && r.store !== "총 매출");
+
+  const ceAvg = {
+    target: avg(allStores.map(r => r.ceTarget)),
+    sales: avg(allStores.map(r => r.ceSales)),
+    rate: avg(allStores.map(r => r.ceRate))
+  };
+
+  const mxAvg = {
+    target: avg(allStores.map(r => r.mxTarget)),
+    sales: avg(allStores.map(r => r.mxSales)),
+    rate: avg(allStores.map(r => r.mxRate))
+  };
+
+  // CE 4개 점포
+  rows.slice(0, 4).forEach((r, i) => {
+    writeSalesRow(sheet, 12 + i, {
+      store: r.store,
+      target: r.ceTarget,
+      sales: r.ceSales,
+      rank: r.ceRank,
+      rate: r.ceRate,
+      rateRank: r.ceRateRank,
+      avgSales: ceAvg.sales,
+      avgRate: ceAvg.rate
+    });
+  });
+
+  // CE 전국 평균
+  writeAverageRow(sheet, 16, {
+    target: ceAvg.target,
+    sales: ceAvg.sales,
+    rate: ceAvg.rate
+  });
+
+  // MX 4개 점포
+  rows.slice(0, 4).forEach((r, i) => {
+    writeSalesRow(sheet, 19 + i, {
+      store: r.store,
+      target: r.mxTarget,
+      sales: r.mxSales,
+      rank: r.mxRank,
+      rate: r.mxRate,
+      rateRank: r.mxRateRank,
+      avgSales: mxAvg.sales,
+      avgRate: mxAvg.rate
+    });
+  });
+
+  // MX 전국 평균
+  writeAverageRow(sheet, 23, {
+    target: mxAvg.target,
+    sales: mxAvg.sales,
+    rate: mxAvg.rate
+  });
+
+  // 전체 매출 영역 스타일 정리
+  sheet.range("C11:I23").style({
+    border: true,
+    horizontalAlignment: "center",
+    verticalAlignment: "center"
+  });
+
+  // 숫자 컬럼 오른쪽 정렬
+  sheet.range("D12:I23").style({
+    horizontalAlignment: "right"
+  });
+
+  // 점포명 가운데 정렬
+  sheet.range("C12:C23").style({
+    horizontalAlignment: "center"
+  });
+}
+
+function styleSectionTitle(sheet, rangeAddress) {
+  sheet.range(rangeAddress).style({
+    bold: true,
+    horizontalAlignment: "left",
+    verticalAlignment: "center",
+    fill: "FFFFFF",
+    border: true
+  });
+}
+
+function writeSalesHeader(sheet, row) {
+  const headers = [
+    "점포명",
+    "목표",
+    "총 매출",
+    "총 매출 순위",
+    "목표 달성률",
+    "목표 달성 순위"
+  ];
+
+  // C~H 사용, I는 여백/기존 양식 보정용
+  headers.forEach((h, i) => {
+    sheet.cell(row, 3 + i).value(h);
+  });
+
+  sheet.range(row, 3, row, 8).style({
+    bold: true,
+    fill: "EDEDED",
+    border: true,
+    horizontalAlignment: "center",
+    verticalAlignment: "center"
+  });
+}
+
+function writeSalesRow(sheet, row, data) {
+  const salesColor = data.sales >= data.avgSales ? "FF0000" : "0057FF";
+  const rateColor = data.rate >= data.avgRate ? "FF0000" : "0057FF";
+  const rankColor = Number(data.rank) <= 3 && Number(data.rank) > 0 ? "FF0000" : "000000";
+
+  sheet.cell(row, 3).value(data.store);
+  sheet.cell(row, 4).value(toWon(data.target));
+  sheet.cell(row, 5).value(toWon(data.sales));
+  sheet.cell(row, 6).value(formatRankValue(data.rank));
+  sheet.cell(row, 7).value(formatPercentValue(data.rate));
+  sheet.cell(row, 8).value(formatRankValue(data.rateRank));
+
+  sheet.range(row, 3, row, 8).style({
+    border: true,
+    bold: true,
+    fontFamily: "맑은 고딕",
+    fontSize: 10,
+    verticalAlignment: "center"
+  });
+
+  // 목표는 검정
+  sheet.cell(row, 4).style({
+    fontColor: "000000",
+    horizontalAlignment: "right"
+  });
+
+  // 총 매출: 전국 평균 이상 빨강 / 미만 파랑
+  sheet.cell(row, 5).style({
+    fontColor: salesColor,
+    bold: true,
+    horizontalAlignment: "right"
+  });
+
+  // 총 매출 순위: 3위권 빨강
+  sheet.cell(row, 6).style({
+    fontColor: rankColor,
+    bold: true,
+    horizontalAlignment: "right"
+  });
+
+  // 목표 달성률: 전국 평균 이상 빨강 / 미만 파랑
+  sheet.cell(row, 7).style({
+    fontColor: rateColor,
+    bold: true,
+    horizontalAlignment: "right"
+  });
+
+  // 목표 달성 순위
+  sheet.cell(row, 8).style({
+    fontColor: Number(data.rateRank) <= 3 && Number(data.rateRank) > 0 ? "FF0000" : "000000",
+    bold: true,
+    horizontalAlignment: "right"
+  });
+}
+
+function writeAverageRow(sheet, row, data) {
+  sheet.cell(row, 3).value("전국 평균");
+  sheet.cell(row, 4).value(toWon(data.target));
+  sheet.cell(row, 5).value(toWon(data.sales));
+  sheet.cell(row, 6).value("");
+  sheet.cell(row, 7).value(formatPercentValue(data.rate));
+  sheet.cell(row, 8).value("");
+
+  sheet.range(row, 3, row, 8).style({
+    border: true,
+    bold: true,
+    fill: "FFFFFF",
+    fontColor: "000000",
+    fontFamily: "맑은 고딕",
+    fontSize: 10,
+    verticalAlignment: "center"
+  });
+
+  sheet.range(row, 4, row, 8).style({
+    horizontalAlignment: "right"
+  });
+}
+
+function styleTextArea(sheet, rangeAddress) {
+  sheet.range(rangeAddress).style({
+    border: true,
+    fontFamily: "맑은 고딕",
+    fontSize: 10,
+    verticalAlignment: "top",
+    horizontalAlignment: "left",
+    wrapText: true
+  });
+}
+
+function formatRankValue(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n === 0) return "";
+  return `${Math.round(n)}위`;
+}
+
+function formatPercentValue(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n === 0) return "";
+  return `${(n * 100).toFixed(2)}%`;
+}
 
     function downloadBlob(blob, filename) {
       const url = URL.createObjectURL(blob);

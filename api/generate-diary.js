@@ -5,11 +5,9 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-
     if (!apiKey) {
       return res.status(500).json({
-        error:
-          "GEMINI_API_KEY 환경변수가 없습니다. Vercel Settings > Environment Variables에 등록하세요."
+        error: "GEMINI_API_KEY 환경변수가 없습니다. Vercel Settings > Environment Variables에 등록하세요."
       });
     }
 
@@ -30,14 +28,22 @@ export default async function handler(req, res) {
 - 과장된 표현은 쓰지 않는다.
 - 삼성전자 / 코스트코 현장관리자 업무보고 스타일로 작성한다.
 - 최종 답변에는 설명문, 인사말, 안내문을 쓰지 않는다.
+- 마크다운 굵게 표시(**텍스트**)는 쓰지 않는다.
 
 [기본 작성 형식]
-1) 업무유형
+1. 방문지명
+
+ 1) 업무유형
    - 핵심 이슈 요약
    ㆍ 세부 확인 내용
-       : 처리 진행 내용
+       : 한 일
        : 추가 확인 내용
-       → 결과 또는 후속 조치
+       → 결과, 기대효과 또는 후속 조치
+
+[출근 인원 작성]
+- 상담사/큐레이터 출근 정보가 있으면 방문지 하단에 간단히 포함한다.
+- 휴무로 입력된 경우 "휴무 확인"으로 표현한다.
+- 해당없음 또는 공란이면 억지로 작성하지 않는다.
 
 [업무유형 예시]
 - 진열 점검
@@ -62,7 +68,7 @@ export default async function handler(req, res) {
 - 판매 스크립트 점검
 - 세일즈 코칭
 - 우군화 활동
-- 기타
+- 기타 직접입력 업무
 `;
 
     const userPrompt = buildPrompt(body);
@@ -76,47 +82,33 @@ export default async function handler(req, res) {
 
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [
           {
             role: "user",
-            parts: [
-              {
-                text: fullPrompt
-              }
-            ]
+            parts: [{ text: fullPrompt }]
           }
         ],
         generationConfig: {
-          temperature: 0.35,
+          temperature: 0.25,
           maxOutputTokens: 2500
         }
       })
     });
 
     const data = await response.json();
-
     if (!response.ok) {
       return res.status(response.status).json({
-        error:
-          data?.error?.message ||
-          "Gemini API 호출 실패. API 키, 모델명, 무료 한도를 확인하세요.",
+        error: data?.error?.message || "Gemini API 호출 실패. API 키, 모델명, 무료 한도를 확인하세요.",
         detail: data
       });
     }
 
     const text = extractGeminiText(data);
-
-    return res.status(200).json({
-      text
-    });
+    return res.status(200).json({ text });
   } catch (err) {
-    return res.status(500).json({
-      error: err?.message || String(err)
-    });
+    return res.status(500).json({ error: err?.message || String(err) });
   }
 }
 
@@ -141,11 +133,19 @@ ${JSON.stringify(visits, null, 2)}
 [업무 입력 목록]
 ${JSON.stringify(tasks, null, 2)}
 
+[입력 필드 의미]
+- issue: 이슈사항
+- workDone: 한 일
+- followUp: 후속조치, 결과, 기대효과
+- memo: 추가 메모
+
 [작성 조건]
 - 방문지별로 묶어서 작성한다.
+- 방문 순서가 있으면 방문 순서대로 작성한다.
 - 업무유형별 제목을 붙인다.
-- 입력한 이슈사항, 처리진행, 후속조치를 자연스럽게 보고용 문장으로 정리한다.
-- 상담사/큐레이터 출근 현황이 있으면 방문지 하단에 자연스럽게 포함한다.
+- 업무유형이 기타에서 직접입력된 경우, 직접입력명을 제목으로 사용한다.
+- 입력한 이슈사항, 한 일, 후속조치를 자연스럽게 보고용 문장으로 정리한다.
+- 상담사/큐레이터 출근 현황이 있으면 방문지별로 자연스럽게 포함한다.
 - 중복 내용은 합치되, 중요한 이슈는 누락하지 않는다.
 - 너무 과장된 표현은 금지한다.
 - 최종 답변은 업무내용 본문만 작성한다.
@@ -168,14 +168,11 @@ ${JSON.stringify(tasks, null, 2)}
 - 항목별 한 줄 중심으로 작성
 
 상세 기록형:
-- 발생 내용, 확인 내용, 처리 진행, 후속 조치를 구분해서 작성
+- 발생 내용, 확인 내용, 한 일, 결과 및 후속 조치를 구분해서 작성
 `;
 }
 
 function extractGeminiText(data) {
   const parts = data?.candidates?.[0]?.content?.parts || [];
-  return parts
-    .map((part) => part.text || "")
-    .join("\n")
-    .trim();
+  return parts.map((part) => part.text || "").join("\n").trim();
 }

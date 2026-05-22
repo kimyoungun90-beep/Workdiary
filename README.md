@@ -1,16 +1,10 @@
-{
-  "name": "workdiary-ai-generator",
-  "version": "0.5.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "node check-build.js",
-    "start": "vercel dev",
-    "dev": "vercel dev"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "dependencies": {}
-}
- 
+# 업무일지 AI 자동 작성기 v6
+
+- 기본 방문지 자동 입력 제거
+- 본사 사무실 목록 추가
+- 출근 특이사항 삭제, 상담사/큐레이터 출근/휴무 상태 분리
+- 업무내용 입력: 처리진행 → 한 일, 후속조치 → 후속조치(결과, 기대, 효과 등)
+- 기타 업무유형 직접입력 지원
+- 엑셀 생성 시 xlsx-populate 사용으로 기존 양식 스타일 보존
+- 매출현황: 보고용_요약 시트를 읽어 CE/MX 매출 표 자동 작성
+- 금일 활동계획 C88, 보고사항 및 특이사항 C94 반영

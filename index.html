@@ -3,247 +3,669 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>업무일지 AI 자동 작성기 v7</title>
+  <title>업무일지 AI 자동 작성기</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx-populate/browser/xlsx-populate.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-populate@1.21.0/browser/xlsx-populate.min.js"></script>
   <style>
-    :root{--bg:#f5f7fb;--card:#fff;--ink:#172033;--muted:#6b7280;--line:#e5e7eb;--main:#1867c0;--soft:#eef5ff;--danger:#b91c1c;--good:#15803d;--dark:#0f172a}
-    *{box-sizing:border-box} body{margin:0;font-family:Arial,'Noto Sans KR',sans-serif;background:var(--bg);color:var(--ink)}
-    header{background:#111827;color:white;padding:22px 26px} header h1{margin:0;font-size:24px} header p{margin:8px 0 0;color:#cbd5e1;font-size:14px}
-    main{max-width:1280px;margin:0 auto;padding:22px}
-    section{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 8px 22px rgba(15,23,42,.05)}
-    h2{font-size:18px;margin:0 0 14px}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-    label{display:block;font-size:13px;color:#374151;margin-bottom:6px;font-weight:700} input,select,textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:14px;background:white} textarea{min-height:92px;resize:vertical;line-height:1.5}
-    button{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--main);color:white} button.secondary{background:#374151} button.light{background:#eef2ff;color:#1f2937;border:1px solid #c7d2fe} button.danger{background:var(--danger)} button:disabled{opacity:.55;cursor:not-allowed}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.card{border:1px solid var(--line);border-radius:14px;padding:12px;background:#fbfdff;margin:10px 0}.muted{color:var(--muted);font-size:13px}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--soft);color:#0f4f9f;font-size:12px;margin-left:6px}
-    pre{white-space:pre-wrap;background:var(--dark);color:#e5e7eb;border-radius:14px;padding:16px;min-height:220px;line-height:1.55;overflow:auto}.ok{color:var(--good)}.err{color:#b91c1c}.hide{display:none}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    .visit-grid{display:grid;grid-template-columns:1.3fr 1fr 1.6fr 1fr 1.6fr auto;gap:8px;align-items:end}
-    .task-grid{display:grid;grid-template-columns:1.05fr .95fr 1.05fr 1.25fr 1.35fr 1.35fr 1.35fr 1.05fr auto;gap:8px;align-items:end}
-    .task-grid textarea{min-height:76px}.wide{grid-column:1/-1}.preview{font-size:13px;border:1px dashed #cbd5e1;background:#f8fafc;border-radius:12px;padding:12px;margin-top:10px;white-space:pre-wrap;line-height:1.5}.mini{font-size:12px;padding:6px 9px}
-    @media(max-width:1080px){.grid,.grid2,.grid3,.task-grid,.visit-grid{grid-template-columns:1fr} main{padding:12px} header{padding:18px}}
+    :root {
+      --bg:#f3f6fb; --card:#ffffff; --text:#142033; --muted:#667085; --line:#d9e0ea;
+      --blue:#1f6fd1; --blue2:#eaf2ff; --dark:#263244; --red:#c51f28; --green:#16833a;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial, 'Malgun Gothic', sans-serif; background:var(--bg); color:var(--text); }
+    header { background:#0f172a; color:#fff; padding:18px 22px; position:sticky; top:0; z-index:5; }
+    header h1 { margin:0; font-size:22px; }
+    header p { margin:6px 0 0; color:#cbd5e1; font-size:13px; }
+    main { max-width:1240px; margin:24px auto 60px; padding:0 18px; }
+    .card { background:var(--card); border:1px solid #e5eaf2; border-radius:22px; padding:24px; margin-bottom:20px; box-shadow:0 10px 28px rgba(15, 23, 42, .06); }
+    h2 { margin:0 0 16px; font-size:20px; }
+    .grid { display:grid; gap:12px; }
+    .grid.cols-2 { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+    .grid.cols-4 { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+    .grid.cols-5 { grid-template-columns:repeat(5, minmax(0, 1fr)); }
+    label { display:block; font-weight:700; font-size:14px; margin-bottom:7px; color:#344054; }
+    input, select, textarea { width:100%; border:1px solid #ccd5e2; border-radius:13px; padding:12px 13px; font-size:15px; font-family:inherit; background:#fff; }
+    textarea { min-height:92px; resize:vertical; line-height:1.45; }
+    input:focus, select:focus, textarea:focus { outline:none; border-color:#6ea8fe; box-shadow:0 0 0 3px rgba(31,111,209,.12); }
+    .row-card { border:1px solid var(--line); border-radius:18px; padding:16px; margin:12px 0; background:#fbfdff; }
+    .row-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; gap:10px; }
+    .row-head strong { font-size:16px; }
+    .btns { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    button { border:0; border-radius:13px; padding:12px 17px; font-size:15px; font-weight:800; cursor:pointer; }
+    .btn-primary { background:var(--blue); color:#fff; }
+    .btn-dark { background:var(--dark); color:#fff; }
+    .btn-soft { background:#eef4ff; color:#1e3a8a; border:1px solid #bcd0ff; }
+    .btn-red { background:var(--red); color:#fff; }
+    .btn-green { background:var(--green); color:#fff; }
+    .hint { color:var(--muted); font-size:13px; line-height:1.45; }
+    .status { margin-top:13px; font-weight:800; min-height:22px; }
+    .output { white-space:pre-wrap; background:#0f172a; color:#e5e7eb; min-height:220px; padding:20px; border-radius:18px; line-height:1.7; overflow:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; background:#fff; }
+    th, td { border:1px solid #d7dee9; padding:8px; text-align:right; }
+    th:first-child, td:first-child { text-align:center; }
+    th { background:#eef4ff; color:#1f2a44; }
+    .scroll { overflow:auto; border-radius:14px; border:1px solid #e5eaf2; }
+    .hidden { display:none !important; }
+    .danger { color:#dc2626; }
+    .success { color:#15803d; }
+    .warn { color:#d97706; }
+    @media (max-width:900px) { .grid.cols-2, .grid.cols-3, .grid.cols-4, .grid.cols-5 { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
-<header>
-  <h1>업무일지 AI 자동 작성기</h1>
-  <p>사용자 양식 기준으로 날짜/매출/중점업무/업무내용/활동계획/특이사항을 기존 엑셀 양식에 반영합니다.</p>
-</header>
-<main>
-  <section>
-    <h2>1. 기본 정보</h2>
-    <div class="grid">
-      <div><label>작성일자</label><input id="writeDate" type="date"></div>
-      <div><label>업무일자</label><input id="workDate" type="date"></div>
-      <div><label>주간 기간</label><input id="weekPeriod" placeholder="예: 5/18(월) ~ 5/24(일)"></div>
-      <div><label>담당자</label><select id="manager"></select></div>
-    </div>
-    <div class="grid2" style="margin-top:12px">
-      <div><label>작성 스타일</label><select id="styleMode"></select></div>
-      <div><label>매출 표시 담당자</label><select id="salesManager"></select></div>
-    </div>
-  </section>
+  <header>
+    <h1>업무일지 AI 자동 작성기</h1>
+    <p>입력값 기준으로 업무내용을 AI가 작성하고, 업로드한 업무일지 양식에 맞춰 엑셀을 생성합니다.</p>
+  </header>
 
-  <section>
-    <h2>2. 파일 업로드 <span class="pill">엑셀 생성 시 필요</span></h2>
-    <div class="grid2">
-      <div><label>업무일지 빈 양식.xlsx</label><input id="templateFile" type="file" accept=".xlsx,.xls"></div>
-      <div><label>코스트코 CE/MX 실적 자동취합.xlsx</label><input id="salesFile" type="file" accept=".xlsx,.xls"></div>
-    </div>
-    <p class="muted">매출 파일은 <b>보고용_요약</b> 시트를 읽어서 담당자 기준으로 매출현황에 반영합니다. 김영언 담당자는 세종/대전/대구/혁신점 순서로 정리합니다.</p>
-    <div id="salesPreview" class="preview hide"></div>
-  </section>
+  <main>
+    <section class="card">
+      <h2>1. 기본 정보</h2>
+      <div class="grid cols-5">
+        <div><label>작성일자</label><input id="writeDate" type="date" /></div>
+        <div><label>업무일자</label><input id="workDate" type="date" /></div>
+        <div><label>주간 기간</label><input id="weekPeriod" type="text" placeholder="예: 5/18(월) ~ 5/24(일)" /></div>
+        <div><label>담당자</label><select id="manager"></select></div>
+        <div><label>작성 스타일</label><select id="styleMode"></select></div>
+      </div>
+    </section>
 
-  <section>
-    <h2>3. 직접 입력 영역</h2>
-    <div class="grid3">
-      <div><label>중점 추진 업무</label><textarea id="priorityWork" placeholder="웹앱에 작성한 내용을 그대로 반영"></textarea></div>
-      <div><label>금일 활동계획</label><textarea id="todayPlan" placeholder="웹앱에 작성한 내용을 그대로 반영"></textarea></div>
-      <div><label>보고사항 및 특이사항</label><textarea id="specialNote" placeholder="웹앱에 작성한 내용을 그대로 반영"></textarea></div>
-    </div>
-  </section>
+    <section class="card">
+      <h2>2. 엑셀 파일 업로드</h2>
+      <div class="grid cols-2">
+        <div>
+          <label>업무일지 빈 양식</label>
+          <input id="templateFile" type="file" accept=".xlsx" />
+          <div class="hint">예: 양식 내용 미작성.xlsx</div>
+        </div>
+        <div>
+          <label>매출 자동취합 파일</label>
+          <input id="salesFile" type="file" accept=".xlsx,.xls" />
+          <div class="hint">보고용_요약 시트를 읽어서 담당자/점포 기준으로 정리합니다.</div>
+        </div>
+      </div>
+      <div id="fileStatus" class="status"></div>
+    </section>
 
-  <section>
-    <h2>4. 방문 순서 및 출근 인원</h2>
-    <p class="muted">기본 방문지는 자동으로 넣지 않습니다. 상담사/큐레이터가 휴무인 경우 상태를 휴무로 선택하면 됩니다. 본사/사무실처럼 해당 인원이 없으면 해당없음으로 두면 AI가 출근 문구를 작성하지 않습니다.</p>
-    <div id="visitsBox"></div>
-    <div class="actions"><button class="light" id="addVisitBtn">방문지 추가</button></div>
-  </section>
+    <section class="card">
+      <h2>3. 매출 현황</h2>
+      <div class="hint">김영언 선택 시 세종점 / 대전점 / 대구점 / 혁신점만 반영합니다. 다른 담당자는 보고용_요약의 담당자 기준으로 반영합니다.</div>
+      <div id="salesStatus" class="status"></div>
+      <div class="scroll" style="margin-top:10px;">
+        <table id="salesTable">
+          <thead></thead>
+          <tbody><tr><td style="text-align:center;">매출 파일을 업로드하면 여기에 표시됩니다.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
 
-  <section>
-    <h2>5. 업무내용 입력</h2>
-    <p class="muted">핵심은 <b>업무 주제/제목</b>입니다. 예: “W21 CE/MX 매출 취합 및 현황 분석”, “TV SYNC 불량 조치”, “UHD 75인치 배송 지연 VOC 처리”. AI는 이 주제에 맞춰 업무내용을 정리합니다.</p>
-    <div id="tasksBox"></div>
-    <div class="actions"><button class="light" id="addTaskBtn">업무 추가</button><button class="secondary" id="sampleBtn">샘플 입력</button></div>
-  </section>
+    <section class="card">
+      <h2>4. 중점 추진 업무 / 활동계획 / 특이사항</h2>
+      <div class="grid cols-3">
+        <div>
+          <label>중점 추진 업무</label>
+          <textarea id="priorityWork" placeholder="웹에서 정리한 내용을 그대로 넣습니다."></textarea>
+        </div>
+        <div>
+          <label>금일 활동계획</label>
+          <textarea id="todayPlan" placeholder="입력한 내용을 그대로 엑셀에 반영합니다."></textarea>
+        </div>
+        <div>
+          <label>보고사항 및 특이사항</label>
+          <textarea id="specialNote" placeholder="입력한 내용을 그대로 엑셀에 반영합니다."></textarea>
+        </div>
+      </div>
+    </section>
 
-  <section>
-    <h2>6. 생성</h2>
-    <div class="actions">
-      <button id="generateBtn">AI 업무내용 생성</button>
-      <button class="secondary" id="copyBtn">결과 복사</button>
-      <button class="light" id="excelBtn">엑셀 생성</button>
-    </div>
-    <p id="status" class="muted"></p>
-    <pre id="output">아직 생성된 업무내용이 없습니다.</pre>
-  </section>
-</main>
-<script>
-const MANAGERS = ['김영언','심창보','김현래','조재현','윤재경'];
-const STYLE_MODES = ['기본 업무일지','보고용 정리','임원 보고용','주간동향 보고용','간단 요약형','상세 기록형'];
-const WORK_TYPES = ['진열 점검','VOC 처리','상담사 면담','큐레이터 면담','거래선 미팅','행사 공유','매출 리뷰','교육','신입 면담','퇴직 면담','거래선 상견례','진열 변경 요청','거래선 매출 요청','재고 확인','입고 확인','설치 일정 확인','배송 지연 확인','KSP 포탈 확인','OB 콜 진행','판매 스크립트 점검','세일즈 코칭','우군화 활동','기타'];
-const PLACE_PRESETS = ['본사 사무실','사무실','코스트코 세종점','코스트코 대전점','코스트코 대구점','코스트코 혁신점','코스트코 양재점','코스트코 광명점','코스트코 공세점','코스트코 평택점','코스트코 상봉점','코스트코 하남점','코스트코 양평점','코스트코 의정부점','코스트코 일산점','코스트코 송도점','코스트코 고척점','코스트코 청라점','코스트코 천안점','코스트코 부산점','코스트코 울산점','코스트코 김해점'];
-const STORE_ORDER = { '김영언':['세종점','대전점','대구점','혁신점'] };
-const STATUS_OPTIONS = ['출근','휴무','미확인','해당없음'];
-const $ = (id) => document.getElementById(id);
-let visits = [];
-let tasks = [];
-let lastSalesSummary = null;
+    <section class="card">
+      <h2>5. 방문지 / 출근 인원</h2>
+      <div class="hint">방문지는 자동으로 넣지 않습니다. 필요한 방문지만 직접 추가하세요. 상담사/큐레이터 휴무도 상태로 선택할 수 있습니다.</div>
+      <div id="visitsBox"></div>
+      <button id="addVisitBtn" class="btn-soft" type="button">방문지 추가</button>
+    </section>
 
-window.addEventListener('DOMContentLoaded', init);
-function init(){
-  fillSelect($('manager'), MANAGERS); fillSelect($('salesManager'), MANAGERS); fillSelect($('styleMode'), STYLE_MODES);
-  setDefaultDates(); visits = []; tasks = []; renderVisits(); renderTasks();
-  $('manager').addEventListener('change', () => { $('salesManager').value = $('manager').value; previewSales(); });
-  $('salesFile').addEventListener('change', previewSales); $('salesManager').addEventListener('change', previewSales);
-  $('addVisitBtn').addEventListener('click',()=>{visits.push({place:'', consultantStatus:'해당없음', consultants:'', curatorStatus:'해당없음', curators:''});renderVisits();});
-  $('addTaskBtn').addEventListener('click',()=>{tasks.push({place:'', type:'진열 점검', customType:'', subject:'', issue:'', workDone:'', followUp:'', memo:''});renderTasks();});
-  $('sampleBtn').addEventListener('click', loadSample); $('generateBtn').addEventListener('click', generateDiary); $('copyBtn').addEventListener('click', copyOutput); $('excelBtn').addEventListener('click', createExcel);
-}
-function fillSelect(select, values){ select.innerHTML = values.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join(''); }
-function setDefaultDates(){ const d = new Date(); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0'); $('writeDate').value=`${yyyy}-${mm}-${dd}`; $('workDate').value=`${yyyy}-${mm}-${dd}`; $('weekPeriod').value=getWeekPeriod(d); }
-function getWeekPeriod(date){ const d = new Date(date); const day = d.getDay() || 7; const monday = new Date(d); monday.setDate(d.getDate()-day+1); const sunday = new Date(monday); sunday.setDate(monday.getDate()+6); const week = ['일','월','화','수','목','금','토']; const fmt = x => `${x.getMonth()+1}/${x.getDate()}(${week[x.getDay()]})`; return `${fmt(monday)} ~ ${fmt(sunday)}`; }
-function renderVisits(){
-  $('visitsBox').innerHTML = visits.map((v, i) => `<div class="card visit-grid">
-    <div><label>${i+1}차 방문지</label><input list="placeList" data-visit="${i}" data-field="place" value="${esc(v.place)}" placeholder="예: 본사 사무실"></div>
-    <div><label>상담사 상태</label><select data-visit="${i}" data-field="consultantStatus">${STATUS_OPTIONS.map(s=>`<option ${s===v.consultantStatus?'selected':''} value="${esc(s)}">${esc(s)}</option>`).join('')}</select></div>
-    <div><label>상담사</label><input data-visit="${i}" data-field="consultants" value="${esc(v.consultants)}" placeholder="출근자 이름 / 휴무 시 공란 가능"></div>
-    <div><label>큐레이터 상태</label><select data-visit="${i}" data-field="curatorStatus">${STATUS_OPTIONS.map(s=>`<option ${s===v.curatorStatus?'selected':''} value="${esc(s)}">${esc(s)}</option>`).join('')}</select></div>
-    <div><label>큐레이터</label><input data-visit="${i}" data-field="curators" value="${esc(v.curators)}" placeholder="출근자 이름 / 휴무 시 공란 가능"></div>
-    <button class="danger" data-visit-remove="${i}">삭제</button>
-  </div>`).join('') + `<datalist id="placeList">${PLACE_PRESETS.map(p=>`<option value="${esc(p)}"></option>`).join('')}</datalist>`;
-  document.querySelectorAll('[data-visit]').forEach(el=>el.addEventListener('input',e=>{const i=Number(e.target.dataset.visit); visits[i][e.target.dataset.field]=e.target.value; renderTasks();}));
-  document.querySelectorAll('[data-visit]').forEach(el=>el.addEventListener('change',e=>{const i=Number(e.target.dataset.visit); visits[i][e.target.dataset.field]=e.target.value;}));
-  document.querySelectorAll('[data-visit-remove]').forEach(el=>el.addEventListener('click',e=>{visits.splice(Number(e.target.dataset.visitRemove),1); renderVisits(); renderTasks();}));
-}
-function renderTasks(){
-  const places = [...new Set([...PLACE_PRESETS, ...visits.map(v=>v.place).filter(Boolean), ...tasks.map(t=>t.place).filter(Boolean)])];
-  $('tasksBox').innerHTML = tasks.map((t, i) => {
-    const isEtc = t.type === '기타';
-    return `<div class="card task-grid">
-      <div><label>방문지</label><input list="taskPlaceList" data-task="${i}" data-field="place" value="${esc(t.place)}" placeholder="예: 사무실"></div>
-      <div><label>업무유형</label><select data-task="${i}" data-field="type">${WORK_TYPES.map(w=>`<option ${w===t.type?'selected':''} value="${esc(w)}">${esc(w)}</option>`).join('')}</select></div>
-      <div><label>기타 업무유형</label><input data-task="${i}" data-field="customType" value="${esc(t.customType)}" placeholder="기타 선택 시" ${isEtc?'':'disabled'}></div>
-      <div><label>업무 주제/제목</label><textarea data-task="${i}" data-field="subject" placeholder="예: W21 CE/MX 매출 취합 및 현황 분석">${esc(t.subject)}</textarea></div>
-      <div><label>이슈사항</label><textarea data-task="${i}" data-field="issue" placeholder="예: W21 매출 취합 필요 / TV SYNC 불량 발생">${esc(t.issue)}</textarea></div>
-      <div><label>한 일</label><textarea data-task="${i}" data-field="workDone" placeholder="예: KSP 포탈 기준 CE/MX 매출 취합 / WIFI 재연결 조치 완료">${esc(t.workDone)}</textarea></div>
-      <div><label>후속조치(결과, 기대, 효과 등)</label><textarea data-task="${i}" data-field="followUp" placeholder="예: 점포별 현장 관리 지표로 활용 예정">${esc(t.followUp)}</textarea></div>
-      <div><label>추가 메모</label><textarea data-task="${i}" data-field="memo" placeholder="예: 대구·혁신 매출 상위권, 대전·세종 독려 필요">${esc(t.memo)}</textarea></div>
-      <button class="danger" data-task-remove="${i}">삭제</button>
-    </div>`;
-  }).join('') + `<datalist id="taskPlaceList">${places.map(p=>`<option value="${esc(p)}"></option>`).join('')}</datalist>`;
-  document.querySelectorAll('[data-task]').forEach(el=>el.addEventListener('input',e=>{const i=Number(e.target.dataset.task); tasks[i][e.target.dataset.field]=e.target.value;}));
-  document.querySelectorAll('[data-task]').forEach(el=>el.addEventListener('change',e=>{const i=Number(e.target.dataset.task); tasks[i][e.target.dataset.field]=e.target.value; if(e.target.dataset.field==='type') renderTasks();}));
-  document.querySelectorAll('[data-task-remove]').forEach(el=>el.addEventListener('click',e=>{tasks.splice(Number(e.target.dataset.taskRemove),1); renderTasks();}));
-}
-function collectPayload(){
-  const normalizedTasks = tasks.map(t => ({...t, type: t.type === '기타' && t.customType ? t.customType : t.type})).filter(t => t.place || t.subject || t.issue || t.workDone || t.followUp || t.memo);
-  const normalizedVisits = visits.map(v => {
-    const out = { place: v.place };
-    if(v.consultantStatus && v.consultantStatus !== '해당없음') out.consultant = { status:v.consultantStatus, names:v.consultants || '' };
-    if(v.curatorStatus && v.curatorStatus !== '해당없음') out.curator = { status:v.curatorStatus, names:v.curators || '' };
-    return out;
-  }).filter(v => v.place);
-  return { manager:$('manager').value, styleMode:$('styleMode').value, visits: normalizedVisits, tasks: normalizedTasks };
-}
-async function generateDiary(){
-  setStatus('AI 업무내용 생성 중...', ''); $('generateBtn').disabled=true;
-  try{
-    const res = await fetch('/api/generate-diary', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(collectPayload())});
-    const data = await res.json(); if(!res.ok) throw new Error(data.error || 'AI 생성 실패');
-    $('output').textContent = data.text || '생성 결과가 비어 있습니다.'; setStatus('AI 업무내용 생성 완료', 'ok');
-  }catch(err){ setStatus(err.message, 'err'); }
-  finally{ $('generateBtn').disabled=false; }
-}
-function copyOutput(){ navigator.clipboard.writeText($('output').textContent).then(()=>setStatus('복사 완료','ok')).catch(()=>setStatus('복사 실패','err')); }
-function loadSample(){
-  visits = [{place:'사무실',consultantStatus:'해당없음',consultants:'',curatorStatus:'해당없음',curators:''}];
-  tasks = [{place:'사무실',type:'기타',customType:'매출 점검',subject:'W21 CE/MX 매출 취합 및 현황 분석',issue:'W21 매출 취합 필요',workDone:'KSP 포탈 배송 완료 및 점포 입점 기준 CE/MX 매출 취합',followUp:'점포별 현장 관리 지표로 활용 예정',memo:'대구·혁신점 매출 상위권 확인, 대전·세종점 매출 독려 필요 확인'}];
-  renderVisits(); renderTasks(); setStatus('샘플 입력 완료','ok');
-}
-async function previewSales(){
-  const file = $('salesFile').files[0]; if(!file){ $('salesPreview').classList.add('hide'); lastSalesSummary=null; return; }
-  try{ lastSalesSummary = parseSalesWorkbook(await file.arrayBuffer(), $('salesManager').value); $('salesPreview').classList.remove('hide'); $('salesPreview').textContent = makeSalesPreviewText(lastSalesSummary); }
-  catch(err){ $('salesPreview').classList.remove('hide'); $('salesPreview').textContent = '매출 파일 읽기 실패: '+err.message; }
-}
-function parseSalesWorkbook(arrayBuffer, manager){
-  if(!window.XLSX) throw new Error('XLSX 라이브러리를 불러오지 못했습니다.');
-  const wb = XLSX.read(arrayBuffer, {type:'array'}); const ws = wb.Sheets['보고용_요약'] || wb.Sheets[wb.SheetNames[0]]; const rows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true});
-  const hIdx = rows.findIndex(r => r && r.includes('담당') && r.includes('점포')); if(hIdx < 0) throw new Error('보고용_요약 시트에서 헤더를 찾지 못했습니다.');
-  const headers = rows[hIdx].map(v => String(v || '').trim()); const idx = name => headers.indexOf(name);
-  const mapRow = r => ({ manager: r[idx('담당')], store: r[idx('점포')], totalTarget: num(r[idx('총 목표')]), totalActual: num(r[idx('총 실적')]), totalRate: num(r[idx('총 달성률')]), ceTarget: num(r[idx('CE 목표')]), ceActual: num(r[idx('CE 실적')]), ceRate: num(r[idx('CE 달성률')]), mxTarget: num(r[idx('MX 목표')]), mxActual: num(r[idx('MX 실적')]), mxRate: num(r[idx('MX 달성률')]), totalSalesRank: num(r[idx('총 매출 순위')]), ceSalesRank: num(r[idx('CE 매출 순위')]), ceRateRank: num(r[idx('CE 달성률 순위')]), totalRateRank: num(r[idx('총 매출 달성률 순위')]), mxSalesRank: num(r[idx('MX 매출 순위')]), mxRateRank: num(r[idx('MX 달성률 순위')]) });
-  const all = rows.slice(hIdx+1).filter(r => r && r[idx('담당')] && r[idx('점포')]).map(mapRow);
-  let selected = all.filter(r => r.manager === manager && r.store && r.store !== '총 매출'); const order = STORE_ORDER[manager]; if(order){ selected = order.map(s => selected.find(r => r.store === s)).filter(Boolean); }
-  const nationalRows = all.filter(r => r.store && r.store !== '총 매출' && r.manager !== '전체'); return {manager, selected, national: averageRows(nationalRows)};
-}
-function averageRows(rows){ const avg = field => rows.length ? rows.reduce((s,r)=>s+(Number(r[field])||0),0)/rows.length : 0; return {store:'전국 평균', ceTarget:avg('ceTarget'), ceActual:avg('ceActual'), ceRate:avg('ceRate'), mxTarget:avg('mxTarget'), mxActual:avg('mxActual'), mxRate:avg('mxRate')}; }
-function makeSalesPreviewText(summary){ const lines = [`[${summary.manager}] 매출 반영 대상`]; for(const r of summary.selected){ lines.push(`ㆍ${r.store}: 총 ${fmtNum(r.totalActual)}백만원 / CE ${fmtNum(r.ceActual)}백만원 / MX ${fmtNum(r.mxActual)}백만원`); } return lines.join('\n'); }
-async function createExcel(){
-  if(!window.XlsxPopulate){ setStatus('엑셀 양식 보존용 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.','err'); return; }
-  const file = $('templateFile').files[0]; if(!file){ setStatus('업무일지 빈 양식.xlsx를 먼저 업로드하세요.','err'); return; }
-  try{
-    const ab = await file.arrayBuffer(); const workbook = await XlsxPopulate.fromDataAsync(ab); const sheet = workbook.sheet(0);
-    cell(sheet,'C5').value(formatDateKo($('writeDate').value)); cell(sheet,'G5').value($('manager').value); cell(sheet,'A7').value($('weekPeriod').value);
-    if($('salesFile').files[0]){ const salesSummary = parseSalesWorkbook(await $('salesFile').files[0].arrayBuffer(), $('salesManager').value); writeSalesToSheet(sheet, salesSummary); }
-    writeLinesToRows(sheet, 'C24', $('priorityWork').value, 6);
-    writeLinesToRows(sheet, 'C33', cleanOutputText($('output').textContent), 54);
-    writeLinesToRows(sheet, 'C88', $('todayPlan').value, 6);
-    writeLinesToRows(sheet, 'C94', $('specialNote').value, 1);
-    const blob = await workbook.outputAsync(); downloadBlob(blob, `업무일지_${$('manager').value}_${$('workDate').value || ''}.xlsx`); setStatus('엑셀 생성 완료: 양식과 매출현황 스타일을 반영했습니다.','ok');
-  }catch(err){ setStatus('엑셀 생성 실패: '+err.message,'err'); }
-}
-function writeSalesToSheet(sheet, summary){
-  clearRange(sheet, 'C10:I23');
-  const ceRows = summary.selected.map(r => [r.store, r.ceTarget, r.ceActual, r.ceRate, rankValue(r.ceSalesRank), rankValue(r.ceRateRank), '']); ceRows.push(['전국 평균', summary.national.ceTarget, summary.national.ceActual, summary.national.ceRate, '', '', '']);
-  const mxRows = summary.selected.map(r => [r.store, r.mxTarget, r.mxActual, r.mxRate, rankValue(r.mxSalesRank), rankValue(r.mxRateRank), '']); mxRows.push(['전국 평균', summary.national.mxTarget, summary.national.mxActual, summary.national.mxRate, '', '', '']);
-  cell(sheet,'C10').value('[CE 매출]'); writeRow(sheet, 11, ['점포명','목표','실적','달성률','매출 순위','달성률 순위','비고']); ceRows.forEach((r,i)=>writeRow(sheet, 12+i, r));
-  cell(sheet,'C17').value('[MX 매출]'); writeRow(sheet, 18, ['점포명','목표','실적','달성률','매출 순위','달성률 순위','비고']); mxRows.forEach((r,i)=>writeRow(sheet, 19+i, r));
-  styleSalesArea(sheet, summary);
-}
-function styleSalesArea(sheet, summary){
-  safeStyle(sheet.range('C10:I23'), { wrapText:true, verticalAlignment:'center', fontFamily:'맑은 고딕', fontSize:10 });
-  safeStyle(sheet.range('C11:I11'), { fill:'D9D9D9', bold:true, horizontalAlignment:'center' });
-  safeStyle(sheet.range('C18:I18'), { fill:'D9D9D9', bold:true, horizontalAlignment:'center' });
-  safeStyle(sheet.range('C10:I10'), { bold:true }); safeStyle(sheet.range('C17:I17'), { bold:true });
-  safeStyle(sheet.range('D12:E16'), { numberFormat:'#,##0.0' }); safeStyle(sheet.range('D19:E23'), { numberFormat:'#,##0.0' });
-  safeStyle(sheet.range('F12:F16'), { numberFormat:'0.0%' }); safeStyle(sheet.range('F19:F23'), { numberFormat:'0.0%' });
-  safeStyle(sheet.range('G12:H16'), { numberFormat:'0', fontColor:'0000FF', horizontalAlignment:'center' }); safeStyle(sheet.range('G19:H23'), { numberFormat:'0', fontColor:'0000FF', horizontalAlignment:'center' });
-  safeStyle(sheet.range('F12:F16'), { fontColor:'0000FF', horizontalAlignment:'center' }); safeStyle(sheet.range('F19:F23'), { fontColor:'0000FF', horizontalAlignment:'center' });
-  safeStyle(sheet.range('C16:F16'), { fill:'DDEBF7', bold:true }); safeStyle(sheet.range('G16:I16'), { fill:'404040', fontColor:'FFFFFF' });
-  safeStyle(sheet.range('C23:F23'), { fill:'DDEBF7', bold:true }); safeStyle(sheet.range('G23:I23'), { fill:'404040', fontColor:'FFFFFF' });
-  markMaxRate(sheet, summary.selected, 'ceRate', 12); markMaxRate(sheet, summary.selected, 'mxRate', 19);
-  addBorders(sheet, 'C11:I16'); addBorders(sheet, 'C18:I23');
-}
-function markMaxRate(sheet, rows, field, startRow){ const vals = rows.map(r=>Number(r[field])||0); const max = Math.max(...vals); vals.forEach((v,i)=>{ if(v===max && Number.isFinite(v)){ safeStyle(cell(sheet, `F${startRow+i}`), {fontColor:'FF0000', bold:true}); } }); }
-function addBorders(sheet, addr){ try{ sheet.range(addr).style('border', true); }catch(e){} }
-function safeStyle(obj, styleObj){ try{ obj.style(styleObj); }catch(e){ try{ for(const k in styleObj){ obj.style(k, styleObj[k]); } }catch(err){} } }
-function writeLinesToRows(sheet, startAddr, text, maxRows){
-  const m = /^([A-Z]+)(\d+)$/.exec(startAddr); if(!m) return; const c = m[1]; const start = Number(m[2]);
-  for(let i=0;i<maxRows;i++){ cell(sheet, `${c}${start+i}`).value(''); }
-  const lines = String(text || '').replace(/\r\n/g,'\n').split('\n'); let row = 0;
-  for(const line of lines){ if(row >= maxRows) break; cell(sheet, `${c}${start+row}`).value(line).style('wrapText', true); row++; }
-}
-function clearRange(sheet, addr){ sheet.range(addr).value(''); }
-function writeRow(sheet, row, values){ values.forEach((v, i)=> cell(sheet, `${col(3+i)}${row}`).value(v)); }
-function rankValue(v){ const n=Number(v); return Number.isFinite(n) && n !== 0 ? n : ''; }
-function cell(sheet, addr){ return sheet.cell(addr); }
-function col(n){ let s=''; while(n>0){let m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-m)/26);} return s; }
-function downloadBlob(blob, filename){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
-function cleanOutputText(t){ return (t || '').replace(/^아직 생성된 업무내용이 없습니다\.$/, '').replace(/\*\*/g,''); }
-function num(v){ const n=Number(v); return Number.isFinite(n) ? n : 0; }
-function fmtNum(v){ return (Number(v)||0).toFixed(1); }
-function formatDateKo(v){ if(!v) return ''; const [y,m,d]=v.split('-'); return `${y}.${m}.${d}`; }
-function setStatus(msg, cls){ $('status').className = cls ? cls : 'muted'; $('status').textContent=msg; }
-function esc(s){ return String(s ?? '').replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
-</script>
+    <section class="card">
+      <h2>6. 업무내용 입력</h2>
+      <div class="hint">방문지 자동 입력 없음. 업무유형이 기타일 때는 기타 업무유형을 직접 입력하세요.</div>
+      <div id="tasksBox"></div>
+      <div class="btns">
+        <button id="addTaskBtn" class="btn-soft" type="button">업무 추가</button>
+        <button id="sampleBtn" class="btn-dark" type="button">샘플 입력</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>7. 생성</h2>
+      <div class="btns">
+        <button id="generateBtn" class="btn-primary" type="button">AI 업무내용 생성</button>
+        <button id="copyBtn" class="btn-dark" type="button">결과 복사</button>
+        <button id="excelBtn" class="btn-soft" type="button">엑셀 생성</button>
+      </div>
+      <div id="generateMessage" class="status"></div>
+      <div id="output" class="output">아직 생성된 업무내용이 없습니다.</div>
+    </section>
+  </main>
+
+  <datalist id="placeList"></datalist>
+
+  <script>
+    const MANAGERS = ["김영언", "심창보", "김현래", "조재현", "윤재경"];
+    const STYLE_MODES = ["보고용 정리", "기본 업무일지", "임원 보고용", "주간동향 보고용", "간단 요약형", "상세 기록형"];
+    const WORK_TYPES = [
+      "진열 점검", "VOC 처리", "상담사 면담", "큐레이터 면담", "거래선 미팅", "행사 공유", "매출 리뷰", "교육",
+      "신입 면담", "퇴직 면담", "거래선 상견례", "진열 변경 요청", "거래선 매출 요청", "재고 확인", "입고 확인",
+      "설치 일정 확인", "배송 지연 확인", "KSP 포탈 확인", "OB 콜 진행", "판매 스크립트 점검", "세일즈 코칭", "우군화 활동", "기타"
+    ];
+    const PLACE_PRESETS = [
+      "본사 사무실", "사무실", "코스트코 세종점", "코스트코 대전점", "코스트코 대구점", "코스트코 혁신점",
+      "코스트코 양재점", "코스트코 광명점", "코스트코 공세점", "코스트코 평택점", "코스트코 상봉점", "코스트코 하남점",
+      "코스트코 양평점", "코스트코 의정부점", "코스트코 일산점", "코스트코 송도점", "코스트코 고척점", "코스트코 청라점",
+      "코스트코 천안점", "코스트코 부산점", "코스트코 울산점", "코스트코 김해점"
+    ];
+    const STATUS_OPTIONS = ["출근", "휴무", "미확인", "해당없음"];
+    const KIM_STORES = ["세종점", "대전점", "대구점", "혁신점"];
+
+    let visits = [];
+    let tasks = [];
+    let rawSalesRows = [];
+    let templateArrayBuffer = null;
+    let isGeneratingDiary = false;
+    let lastGenerateDiaryAt = 0;
+
+    window.visits = visits;
+    window.tasks = tasks;
+
+    document.addEventListener("DOMContentLoaded", init);
+
+    function init() {
+      fillSelect("manager", MANAGERS, "김영언");
+      fillSelect("styleMode", STYLE_MODES, "보고용 정리");
+      fillDatalist();
+      setDefaultDates();
+      renderVisits();
+      renderTasks();
+      updateSalesTable();
+
+      $("manager").addEventListener("change", updateSalesTable);
+      $("templateFile").addEventListener("change", handleTemplateFile);
+      $("salesFile").addEventListener("change", handleSalesFile);
+      $("addVisitBtn").addEventListener("click", addVisit);
+      $("addTaskBtn").addEventListener("click", addTask);
+      $("sampleBtn").addEventListener("click", loadSample);
+      $("generateBtn").addEventListener("click", generateDiary);
+      $("copyBtn").addEventListener("click", copyOutput);
+      $("excelBtn").addEventListener("click", createExcel);
+    }
+
+    function $(id) { return document.getElementById(id); }
+
+    function fillSelect(id, values, selected) {
+      const el = $(id);
+      el.innerHTML = values.map(v => `<option value="${escapeHtml(v)}" ${v === selected ? "selected" : ""}>${escapeHtml(v)}</option>`).join("");
+    }
+
+    function fillDatalist() {
+      $("placeList").innerHTML = PLACE_PRESETS.map(v => `<option value="${escapeHtml(v)}"></option>`).join("");
+    }
+
+    function setDefaultDates() {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      $("writeDate").value = `${yyyy}-${mm}-${dd}`;
+      $("workDate").value = `${yyyy}-${mm}-${dd}`;
+      $("weekPeriod").value = getWeekPeriod(today);
+    }
+
+    function getWeekPeriod(date) {
+      const d = new Date(date);
+      const day = d.getDay() || 7;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - day + 1);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      const week = ["일", "월", "화", "수", "목", "금", "토"];
+      const fmt = x => `${x.getMonth() + 1}/${x.getDate()}(${week[x.getDay()]})`;
+      return `${fmt(monday)} ~ ${fmt(sunday)}`;
+    }
+
+    function addVisit() {
+      visits.push({ place:"", consultants:"", consultantStatus:"출근", curators:"", curatorStatus:"출근" });
+      syncGlobals();
+      renderVisits();
+    }
+
+    function renderVisits() {
+      const box = $("visitsBox");
+      if (!visits.length) {
+        box.innerHTML = `<div class="row-card hint">등록된 방문지가 없습니다. [방문지 추가]를 눌러 필요한 방문지만 입력하세요.</div>`;
+        return;
+      }
+      box.innerHTML = visits.map((v, idx) => `
+        <div class="row-card">
+          <div class="row-head"><strong>${idx + 1}차 방문</strong><button type="button" class="btn-red" data-visit-remove="${idx}">삭제</button></div>
+          <div class="grid cols-5">
+            <div><label>방문지</label><input list="placeList" data-visit="${idx}" data-field="place" value="${escapeHtml(v.place)}" placeholder="예: 본사 사무실" /></div>
+            <div><label>상담사</label><input data-visit="${idx}" data-field="consultants" value="${escapeHtml(v.consultants)}" placeholder="예: 홍길동, 김철수" /></div>
+            <div><label>상담사 상태</label>${statusSelect("visit", idx, "consultantStatus", v.consultantStatus)}</div>
+            <div><label>큐레이터</label><input data-visit="${idx}" data-field="curators" value="${escapeHtml(v.curators)}" placeholder="예: 이영희" /></div>
+            <div><label>큐레이터 상태</label>${statusSelect("visit", idx, "curatorStatus", v.curatorStatus)}</div>
+          </div>
+        </div>
+      `).join("");
+      box.querySelectorAll("[data-visit]").forEach(el => {
+        el.addEventListener("input", e => {
+          const idx = Number(e.target.dataset.visit);
+          const field = e.target.dataset.field;
+          visits[idx][field] = e.target.value;
+          syncGlobals();
+        });
+        el.addEventListener("change", e => {
+          const idx = Number(e.target.dataset.visit);
+          const field = e.target.dataset.field;
+          visits[idx][field] = e.target.value;
+          syncGlobals();
+        });
+      });
+      box.querySelectorAll("[data-visit-remove]").forEach(btn => btn.addEventListener("click", e => {
+        visits.splice(Number(e.target.dataset.visitRemove), 1);
+        syncGlobals();
+        renderVisits();
+      }));
+    }
+
+    function statusSelect(kind, idx, field, value) {
+      return `<select data-${kind}="${idx}" data-field="${field}">${STATUS_OPTIONS.map(v => `<option value="${escapeHtml(v)}" ${v === value ? "selected" : ""}>${escapeHtml(v)}</option>`).join("")}</select>`;
+    }
+
+    function addTask() {
+      tasks.push({ place:"", type:"", customType:"", title:"", issue:"", done:"", followUp:"", memo:"" });
+      syncGlobals();
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const box = $("tasksBox");
+      if (!tasks.length) {
+        box.innerHTML = `<div class="row-card hint">등록된 업무가 없습니다. [업무 추가]를 눌러 업무를 입력하세요.</div>`;
+        return;
+      }
+      box.innerHTML = tasks.map((t, idx) => {
+        const isEtc = t.type === "기타";
+        return `
+          <div class="row-card">
+            <div class="row-head"><strong>업무 ${idx + 1}</strong><button type="button" class="btn-red" data-task-remove="${idx}">삭제</button></div>
+            <div class="grid cols-4">
+              <div><label>방문지</label><input list="placeList" data-task="${idx}" data-field="place" value="${escapeHtml(t.place)}" placeholder="예: 본사 사무실" /></div>
+              <div><label>업무유형</label>${workTypeSelect(idx, t.type)}</div>
+              <div class="${isEtc ? "" : "hidden"}"><label>기타 업무유형</label><input data-task="${idx}" data-field="customType" value="${escapeHtml(t.customType)}" placeholder="기타 선택 시 직접 입력" /></div>
+              <div><label>업무 주제/제목</label><textarea data-task="${idx}" data-field="title" placeholder="예: 특정 주문 취합">${escapeHtml(t.title)}</textarea></div>
+            </div>
+            <div class="grid cols-4" style="margin-top:12px;">
+              <div><label>이슈사항</label><textarea data-task="${idx}" data-field="issue" placeholder="예: 주문 관리 미흡으로 VOC 발생 최소화 목적">${escapeHtml(t.issue)}</textarea></div>
+              <div><label>한 일</label><textarea data-task="${idx}" data-field="done" placeholder="예: 점포별 CE/MX KSP 포탈 기준 매출 취합">${escapeHtml(t.done)}</textarea></div>
+              <div><label>후속조치(결과, 기대, 효과 등)</label><textarea data-task="${idx}" data-field="followUp" placeholder="예: 매출 취합으로 점포별 현황 파악">${escapeHtml(t.followUp)}</textarea></div>
+              <div><label>추가 메모</label><textarea data-task="${idx}" data-field="memo" placeholder="필요 시 입력">${escapeHtml(t.memo)}</textarea></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      box.querySelectorAll("[data-task]").forEach(el => {
+        el.addEventListener("input", updateTaskField);
+        el.addEventListener("change", updateTaskField);
+      });
+      box.querySelectorAll("[data-task-remove]").forEach(btn => btn.addEventListener("click", e => {
+        tasks.splice(Number(e.target.dataset.taskRemove), 1);
+        syncGlobals();
+        renderTasks();
+      }));
+    }
+
+    function workTypeSelect(idx, value) {
+      return `<select data-task="${idx}" data-field="type"><option value="">선택</option>${WORK_TYPES.map(v => `<option value="${escapeHtml(v)}" ${v === value ? "selected" : ""}>${escapeHtml(v)}</option>`).join("")}</select>`;
+    }
+
+    function updateTaskField(e) {
+      const idx = Number(e.target.dataset.task);
+      const field = e.target.dataset.field;
+      tasks[idx][field] = e.target.value;
+      syncGlobals();
+      if (field === "type") renderTasks();
+    }
+
+    function syncGlobals() {
+      window.visits = visits;
+      window.tasks = tasks;
+    }
+
+    function loadSample() {
+      visits = [
+        { place:"본사 사무실", consultants:"", consultantStatus:"해당없음", curators:"", curatorStatus:"해당없음" }
+      ];
+      tasks = [
+        { place:"본사 사무실", type:"KSP 포탈 확인", customType:"", title:"특정 주문 취합", issue:"주문 관리 미흡으로 VOC 발생 최소화 목적", done:"점포별 CE/MX KSP 포탈 기준 매출 취합", followUp:"매출 취합으로 점포별 현황 파악", memo:"" }
+      ];
+      syncGlobals();
+      renderVisits();
+      renderTasks();
+      showGenerateMessage("샘플 입력 완료", "success");
+    }
+
+    async function handleTemplateFile(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      templateArrayBuffer = await file.arrayBuffer();
+      $("fileStatus").textContent = `업무일지 양식 업로드 완료: ${file.name}`;
+      $("fileStatus").className = "status success";
+    }
+
+    async function handleSalesFile(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type:"array" });
+        const sheetName = workbook.SheetNames.includes("보고용_요약") ? "보고용_요약" : workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const aoa = XLSX.utils.sheet_to_json(sheet, { header:1, defval:"" });
+        rawSalesRows = parseSalesRows(aoa);
+        updateSalesTable();
+        $("fileStatus").textContent = `매출 파일 업로드 완료: ${file.name} / ${rawSalesRows.length}개 행 읽음`;
+        $("fileStatus").className = "status success";
+      } catch (err) {
+        rawSalesRows = [];
+        updateSalesTable();
+        $("fileStatus").textContent = `매출 파일 읽기 실패: ${err.message || err}`;
+        $("fileStatus").className = "status danger";
+      }
+    }
+
+    function parseSalesRows(aoa) {
+      const headerIndex = aoa.findIndex(row => row.some(v => String(v).trim() === "담당") && row.some(v => String(v).trim() === "점포"));
+      if (headerIndex < 0) return [];
+      const headers = aoa[headerIndex].map(v => String(v).trim());
+      return aoa.slice(headerIndex + 1)
+        .filter(row => row.some(v => String(v).trim() !== ""))
+        .map(row => {
+          const obj = {};
+          headers.forEach((h, i) => obj[h] = row[i]);
+          return normalizeSalesRow(obj);
+        });
+    }
+
+    function normalizeSalesRow(obj) {
+      return {
+        manager: String(obj["담당"] ?? "").trim(),
+        store: String(obj["점포"] ?? "").trim(),
+        totalTarget: num(obj["총 목표"]),
+        totalSales: num(obj["총 실적"]),
+        totalRate: num(obj["총 달성률"]),
+        ceTarget: num(obj["CE 목표"]),
+        ceSales: num(obj["CE 실적"]),
+        ceRate: num(obj["CE 달성률"]),
+        mxTarget: num(obj["MX 목표"]),
+        mxSales: num(obj["MX 실적"]),
+        mxRate: num(obj["MX 달성률"]),
+        totalRank: num(obj["총 매출 순위"]),
+        ceRank: num(obj["CE 매출 순위"]),
+        ceRateRank: num(obj["CE 달성률 순위"]),
+        totalRateRank: num(obj["총 매출 달성률 순위"]),
+        mxRank: num(obj["MX 매출 순위"]),
+        mxRateRank: num(obj["MX 달성률 순위"])
+      };
+    }
+
+    function getFilteredSalesRows() {
+      const manager = $("manager").value;
+      let rows = rawSalesRows.filter(r => r.store && r.store !== "총 매출");
+      if (manager === "김영언") {
+        rows = rows.filter(r => r.manager === manager && KIM_STORES.includes(r.store));
+        rows.sort((a, b) => KIM_STORES.indexOf(a.store) - KIM_STORES.indexOf(b.store));
+        return rows;
+      }
+      return rows.filter(r => r.manager === manager);
+    }
+
+    function updateSalesTable() {
+      const rows = getFilteredSalesRows();
+      const thead = $("salesTable").querySelector("thead");
+      const tbody = $("salesTable").querySelector("tbody");
+      thead.innerHTML = `<tr><th>점포</th><th>총 목표</th><th>총 실적</th><th>총 달성률</th><th>CE 실적</th><th>CE 달성률</th><th>MX 실적</th><th>MX 달성률</th><th>총 순위</th></tr>`;
+      if (!rawSalesRows.length) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">매출 파일을 업로드하면 여기에 표시됩니다.</td></tr>`;
+        $("salesStatus").textContent = "";
+        return;
+      }
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">선택한 담당자의 매출 데이터가 없습니다.</td></tr>`;
+        $("salesStatus").textContent = "선택 담당자 기준 데이터 없음";
+        $("salesStatus").className = "status warn";
+        return;
+      }
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${escapeHtml(r.store)}</td>
+          <td>${fmtMoneyM(r.totalTarget)}</td>
+          <td>${fmtMoneyM(r.totalSales)}</td>
+          <td>${fmtPct(r.totalRate)}</td>
+          <td>${fmtMoneyM(r.ceSales)}</td>
+          <td>${fmtPct(r.ceRate)}</td>
+          <td>${fmtMoneyM(r.mxSales)}</td>
+          <td>${fmtPct(r.mxRate)}</td>
+          <td>${fmtRank(r.totalRank)}</td>
+        </tr>
+      `).join("");
+      $("salesStatus").textContent = `${$("manager").value} 매출 ${rows.length}개 점포 반영 준비 완료`;
+      $("salesStatus").className = "status success";
+    }
+
+    async function generateDiary() {
+      if (isGeneratingDiary) {
+        showGenerateMessage("이미 AI 업무내용을 생성 중입니다. 잠시만 기다려주세요.", "warn");
+        return;
+      }
+      const now = Date.now();
+      const cooltime = 30000;
+      if (now - lastGenerateDiaryAt < cooltime) {
+        const remain = Math.ceil((cooltime - (now - lastGenerateDiaryAt)) / 1000);
+        showGenerateMessage(`무료 요청 한도 보호를 위해 ${remain}초 후 다시 시도해주세요.`, "warn");
+        return;
+      }
+      const btn = $("generateBtn");
+      const originalText = btn.textContent;
+      try {
+        isGeneratingDiary = true;
+        lastGenerateDiaryAt = Date.now();
+        btn.disabled = true;
+        btn.textContent = "AI 생성 중...";
+        btn.style.opacity = "0.7";
+        btn.style.cursor = "not-allowed";
+        showGenerateMessage("AI가 업무내용을 작성 중입니다. 잠시만 기다려주세요.", "info");
+
+        const payload = {
+          manager: $("manager").value,
+          styleMode: $("styleMode").value,
+          visits,
+          tasks
+        };
+        const response = await fetch("/api/generate-diary", {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body:JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error || "AI 업무내용 생성에 실패했습니다.");
+        const text = String(data.text || "").trim();
+        if (!text) throw new Error("AI 결과가 비어 있습니다. 다시 시도해주세요.");
+        setDiaryOutput(text);
+        showGenerateMessage("AI 업무내용 생성 완료", "success");
+      } catch (err) {
+        showGenerateMessage(err?.message || String(err), "error");
+      } finally {
+        isGeneratingDiary = false;
+        btn.disabled = false;
+        btn.textContent = originalText;
+        btn.style.opacity = "";
+        btn.style.cursor = "";
+      }
+    }
+
+    function setDiaryOutput(text) { $("output").textContent = text; }
+    function getOutputText() { return $("output").textContent === "아직 생성된 업무내용이 없습니다." ? "" : $("output").textContent; }
+
+    async function copyOutput() {
+      const text = getOutputText();
+      if (!text) return showGenerateMessage("복사할 결과가 없습니다.", "warn");
+      await navigator.clipboard.writeText(text);
+      showGenerateMessage("결과 복사 완료", "success");
+    }
+
+    async function createExcel() {
+      try {
+        if (!templateArrayBuffer) throw new Error("업무일지 빈 양식을 먼저 업로드하세요.");
+        if (typeof XlsxPopulate === "undefined") throw new Error("엑셀 생성 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.");
+        const workbook = await XlsxPopulate.fromDataAsync(templateArrayBuffer);
+        const sheet = workbook.sheet(0);
+
+        sheet.cell("C5").value(formatDateDot($("writeDate").value));
+        sheet.cell("G5").value($("manager").value);
+        sheet.cell("A7").value($("weekPeriod").value);
+
+        writeSalesToSheet(sheet);
+        sheet.cell("C24").value($("priorityWork").value || "");
+        sheet.cell("C33").value(getOutputText() || "");
+        sheet.cell("C88").value($("todayPlan").value || "");
+        sheet.cell("C94").value($("specialNote").value || "");
+
+        const blob = await workbook.outputAsync({ type:"blob" });
+        const manager = $("manager").value || "담당자";
+        const date = $("workDate").value || $("writeDate").value || "업무일자";
+        downloadBlob(blob, `업무일지_${manager}_${date}.xlsx`);
+        showGenerateMessage("엑셀 생성 완료: 양식과 매출현황 스타일을 반영했습니다.", "success");
+      } catch (err) {
+        showGenerateMessage(err?.message || String(err), "error");
+      }
+    }
+
+    function writeSalesToSheet(sheet) {
+      const rows = getFilteredSalesRows();
+      sheet.cell("C10").value("[CE 매출]");
+      writeHeader(sheet, 11);
+      sheet.cell("C17").value("[MX 매출]");
+      writeHeader(sheet, 18);
+
+      const ceRows = rows.slice(0, 4);
+      ceRows.forEach((r, i) => writeCeRow(sheet, 12 + i, r));
+      writeCeAverage(sheet, 16);
+
+      const mxRows = rows.slice(0, 4);
+      mxRows.forEach((r, i) => writeMxRow(sheet, 19 + i, r));
+      writeMxAverage(sheet, 23);
+    }
+
+    function writeHeader(sheet, row) {
+      const headers = ["점포명", "목표", "이번주 매출", "총 매출", "총 매출 순위", "목표 달성률", "목표 달성 순위"];
+      headers.forEach((h, i) => sheet.cell(row, 3 + i).value(h));
+    }
+
+    function writeCeRow(sheet, row, r) {
+      sheet.cell(row, 3).value(r.store);
+      sheet.cell(row, 4).value(toWon(r.ceTarget));
+      sheet.cell(row, 5).value("");
+      sheet.cell(row, 6).value(toWon(r.ceSales));
+      sheet.cell(row, 7).value(blankZero(r.ceRank));
+      sheet.cell(row, 8).value(blankZero(r.ceRate));
+      sheet.cell(row, 9).value(blankZero(r.ceRateRank));
+    }
+
+    function writeMxRow(sheet, row, r) {
+      sheet.cell(row, 3).value(r.store);
+      sheet.cell(row, 4).value(toWon(r.mxTarget));
+      sheet.cell(row, 5).value("");
+      sheet.cell(row, 6).value(toWon(r.mxSales));
+      sheet.cell(row, 7).value(blankZero(r.mxRank));
+      sheet.cell(row, 8).value(blankZero(r.mxRate));
+      sheet.cell(row, 9).value(blankZero(r.mxRateRank));
+    }
+
+    function writeCeAverage(sheet, row) {
+      const all = rawSalesRows.filter(r => r.store && r.store !== "총 매출");
+      sheet.cell(row, 3).value("전국 평균");
+      sheet.cell(row, 4).value(toWon(avg(all.map(r => r.ceTarget))));
+      sheet.cell(row, 5).value("");
+      sheet.cell(row, 6).value(toWon(avg(all.map(r => r.ceSales))));
+      sheet.cell(row, 7).value("");
+      sheet.cell(row, 8).value(avg(all.map(r => r.ceRate)));
+      sheet.cell(row, 9).value("");
+    }
+
+    function writeMxAverage(sheet, row) {
+      const all = rawSalesRows.filter(r => r.store && r.store !== "총 매출");
+      sheet.cell(row, 3).value("전국 평균");
+      sheet.cell(row, 4).value(toWon(avg(all.map(r => r.mxTarget))));
+      sheet.cell(row, 5).value("");
+      sheet.cell(row, 6).value(toWon(avg(all.map(r => r.mxSales))));
+      sheet.cell(row, 7).value("");
+      sheet.cell(row, 8).value(avg(all.map(r => r.mxRate)));
+      sheet.cell(row, 9).value("");
+    }
+
+    function showGenerateMessage(message, type) {
+      const el = $("generateMessage");
+      el.textContent = message;
+      el.className = "status";
+      if (type === "success") el.classList.add("success");
+      else if (type === "error") el.classList.add("danger");
+      else if (type === "warn") el.classList.add("warn");
+      else el.style.color = "#2563eb";
+    }
+
+    function num(v) {
+      if (v === null || v === undefined || v === "") return 0;
+      const n = Number(String(v).replace(/,/g, ""));
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function avg(arr) {
+      const valid = arr.filter(v => Number.isFinite(v) && v !== 0);
+      if (!valid.length) return 0;
+      return valid.reduce((a, b) => a + b, 0) / valid.length;
+    }
+
+    function toWon(millionValue) { return Math.round(num(millionValue) * 1000000); }
+    function blankZero(v) { return v === 0 ? "" : v; }
+    function fmtMoneyM(v) { return num(v) ? `${num(v).toLocaleString(undefined, { maximumFractionDigits:1 })}백만` : "-"; }
+    function fmtPct(v) { return num(v) ? `${(num(v) * 100).toFixed(1)}%` : "-"; }
+    function fmtRank(v) { return num(v) ? `${Math.round(num(v))}` : "-"; }
+
+    function formatDateDot(value) {
+      if (!value) return "";
+      const [y, m, d] = value.split("-");
+      return y && m && d ? `${y}.${m}.${d}` : value;
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
 </body>
 </html>

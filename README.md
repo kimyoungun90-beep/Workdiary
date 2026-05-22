@@ -1,7 +1,21 @@
-# 업무일지 AI 자동 작성기 v7
+[README.md](https://github.com/user-attachments/files/28137972/README.md)
+# 업무일지 AI 자동 작성기
 
-- 업무 주제/제목 입력 추가
-- AI 문장 형식 개선
-- 엑셀 업무내용을 C33부터 행 단위로 입력
-- 매출현황 순위 열 숫자 형식 오류 수정
-- 매출현황 헤더/전국 평균 색상 및 라인 보강
+## 업로드 파일 구조
+GitHub 저장소 최상단에 아래 구조로 업로드하세요.
+
+- index.html
+- package.json
+- check-build.js
+- api/generate-diary.js
+
+## Vercel 환경변수
+Vercel Environment Variables에 아래 2개를 등록하세요.
+
+- GEMINI_API_KEY = Google AI Studio에서 발급한 API 키
+- GEMINI_MODEL = gemini-2.0-flash-lite
+
+## 중요
+- 기존 vercel.json 파일은 삭제하세요.
+- 기존 public 폴더는 없어도 됩니다. check-build.js가 빌드 중 자동 생성합니다.
+- 환경변수 변경 후에는 반드시 Redeploy 하세요.

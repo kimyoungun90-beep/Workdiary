@@ -16,7 +16,6 @@ export default async function handler(req, res) {
 
     const body = req.body || {};
     const model = process.env.GEMINI_MODEL || "gemini-2.0-flash-lite";
-
     const prompt = buildPrompt(body);
 
     const url =
@@ -27,9 +26,7 @@ export default async function handler(req, res) {
 
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [
           {
@@ -49,15 +46,9 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
-      const rawMessage =
-        data?.error?.message ||
-        data?.error?.details?.[0]?.reason ||
-        "Gemini API 호출 실패";
-
-      const friendlyMessage = convertGeminiError(rawMessage, response.status);
-
+      const rawMessage = data?.error?.message || "Gemini API 호출 실패";
       return res.status(response.status).json({
-        error: friendlyMessage,
+        error: convertGeminiError(rawMessage, response.status),
         raw: rawMessage
       });
     }
@@ -67,39 +58,29 @@ export default async function handler(req, res) {
 
     if (finishReason === "MAX_TOKENS") {
       return res.status(500).json({
-        error:
-          "AI 답변이 길이 제한으로 중간에 끊겼습니다. 업무 항목을 줄이거나 다시 생성해주세요."
+        error: "AI 답변이 길이 제한으로 중간에 끊겼습니다. 업무 항목을 줄이거나 다시 생성해주세요."
       });
     }
 
     if (finishReason === "SAFETY") {
       return res.status(500).json({
-        error:
-          "AI 안전 필터로 인해 답변 생성이 중단되었습니다. 입력 문구를 조금 순화해서 다시 시도해주세요."
+        error: "AI 안전 필터로 인해 답변 생성이 중단되었습니다. 입력 문구를 조금 순화해서 다시 시도해주세요."
       });
     }
 
     if (!text) {
-      return res.status(500).json({
-        error: "AI 결과가 비어 있습니다. 다시 시도해주세요."
-      });
+      return res.status(500).json({ error: "AI 결과가 비어 있습니다. 다시 시도해주세요." });
     }
 
     if (looksBroken(text)) {
       return res.status(500).json({
-        error:
-          "AI 결과가 중간에 끊겼거나 형식이 불완전합니다. 다시 생성해주세요."
+        error: "AI 결과가 중간에 끊겼거나 형식이 불완전합니다. 다시 생성해주세요."
       });
     }
 
-    return res.status(200).json({
-      text,
-      finishReason
-    });
+    return res.status(200).json({ text, finishReason });
   } catch (err) {
-    return res.status(500).json({
-      error: err?.message || String(err)
-    });
+    return res.status(500).json({ error: err?.message || String(err) });
   }
 }
 
@@ -182,133 +163,72 @@ ${taskText}
 - 기타: 사용자가 입력한 기타 업무유형명을 제목으로 자연스럽게 작성
 
 [스타일별 차이]
-기본 업무일지:
-- 현장 기록용으로 사실 중심 작성
-
-보고용 정리:
-- 업무보고에 바로 붙여넣을 수 있게 간결하게 정리
-
-임원 보고용:
-- 핵심 위주로 짧고 명확하게 작성
-
-주간동향 보고용:
-- 단순 처리 내용 외에 현장 흐름과 재발 가능성까지 간단히 포함
-
-간단 요약형:
-- 항목별 한 줄 중심으로 작성하되, 의미가 끊기지 않게 작성
-
-상세 기록형:
-- 발생 내용, 확인 내용, 한 일, 후속조치를 구분해서 상세히 작성
+기본 업무일지: 현장 기록용으로 사실 중심 작성
+보고용 정리: 업무보고에 바로 붙여넣을 수 있게 간결하게 정리
+임원 보고용: 핵심 위주로 짧고 명확하게 작성
+주간동향 보고용: 단순 처리 내용 외에 현장 흐름과 재발 가능성까지 간단히 포함
+간단 요약형: 항목별 한 줄 중심으로 작성하되, 의미가 끊기지 않게 작성
+상세 기록형: 발생 내용, 확인 내용, 한 일, 후속조치를 구분해서 상세히 작성
 `;
 }
 
 function formatVisit(v, idx) {
-  const place = getField(v, ["place", "visitPlace", "store", "방문지"]) || "";
-  const consultants = getField(v, ["consultants", "consultant", "consultantNames", "상담사"]) || "";
-  const curators = getField(v, ["curators", "curator", "curatorNames", "큐레이터"]) || "";
-  const consultantStatus =
-    getField(v, ["consultantStatus", "consultantsStatus", "상담사상태"]) || "";
-  const curatorStatus =
-    getField(v, ["curatorStatus", "curatorsStatus", "큐레이터상태"]) || "";
-
   return `[방문 ${idx + 1}]
-방문지: ${safe(place)}
-상담사: ${safe(consultants)}
-상담사 상태: ${safe(consultantStatus)}
-큐레이터: ${safe(curators)}
-큐레이터 상태: ${safe(curatorStatus)}`;
+방문지: ${safe(v.place)}
+상담사: ${safe(v.consultants)}
+상담사 상태: ${safe(v.consultantStatus)}
+큐레이터: ${safe(v.curators)}
+큐레이터 상태: ${safe(v.curatorStatus)}`;
 }
 
 function formatTask(t, idx) {
-  const place = getField(t, ["place", "visitPlace", "store", "방문지"]) || "";
-  const rawType = getField(t, ["type", "workType", "업무유형"]) || "";
-  const customType =
-    getField(t, ["customType", "etcType", "typeEtc", "otherType", "기타업무유형"]) || "";
-  const title = getField(t, ["title", "subject", "topic", "workTitle", "업무주제", "업무제목"]) || "";
-  const issue = getField(t, ["issue", "problem", "이슈사항"]) || "";
-  const done =
-    getField(t, ["done", "action", "workDone", "whatDid", "process", "progress", "한일", "한 일"]) || "";
-  const followUp =
-    getField(t, ["followUp", "followup", "result", "effect", "next", "후속조치"]) || "";
-  const memo = getField(t, ["memo", "note", "extra", "추가메모"]) || "";
-
-  const finalType =
-    rawType === "기타" && customType ? customType : rawType || customType || "기타";
-
+  const finalType = t.type === "기타" && t.customType ? t.customType : t.type || t.customType || "기타";
   return `[업무 ${idx + 1}]
-방문지: ${safe(place)}
+방문지: ${safe(t.place)}
 업무유형: ${safe(finalType)}
-업무 주제/제목: ${safe(title)}
-이슈사항: ${safe(issue)}
-한 일: ${safe(done)}
-후속조치(결과, 기대, 효과 등): ${safe(followUp)}
-추가 메모: ${safe(memo)}`;
-}
-
-function getField(obj, keys) {
-  for (const key of keys) {
-    if (obj && obj[key] !== undefined && obj[key] !== null) {
-      return String(obj[key]).trim();
-    }
-  }
-  return "";
+업무 주제/제목: ${safe(t.title)}
+이슈사항: ${safe(t.issue)}
+한 일: ${safe(t.done)}
+후속조치(결과, 기대, 효과 등): ${safe(t.followUp)}
+추가 메모: ${safe(t.memo)}`;
 }
 
 function safe(value) {
-  return String(value || "")
-    .replace(/\r/g, "")
-    .replace(/\t/g, " ")
-    .trim();
+  return String(value || "").replace(/\r/g, "").replace(/\t/g, " ").trim();
 }
 
 function extractGeminiText(data) {
   const parts = data?.candidates?.[0]?.content?.parts || [];
-  return parts
-    .map((part) => part.text || "")
-    .join("\n")
-    .trim();
+  return parts.map((part) => part.text || "").join("\n").trim();
 }
 
 function cleanOutput(text) {
   let result = String(text || "").trim();
-
-  result = result.replace(/```[\s\S]*?```/g, (match) => {
-    return match.replace(/```[a-zA-Z]*\n?/g, "").replace(/```/g, "");
-  });
-
+  result = result.replace(/```[a-zA-Z]*\n?/g, "").replace(/```/g, "");
   result = result.replace(/^업무내용\s*[:：]?\s*/i, "");
-  result = result.replace(/^다음은.*$/gm, "");
   result = result.replace(/^물론입니다.*$/gm, "");
   result = result.replace(/^아래와 같이.*$/gm, "");
-
+  result = result.replace(/^다음은.*$/gm, "");
   return result.trim();
 }
 
 function looksBroken(text) {
   const value = String(text || "").trim();
-
   if (!value) return true;
 
   const lastLine = value.split("\n").map((x) => x.trim()).filter(Boolean).pop() || "";
+  if (lastLine.endsWith("-") || lastLine.endsWith("ㆍ") || lastLine.endsWith(":") || lastLine.endsWith("：")) return true;
 
-  if (lastLine.endsWith("-")) return true;
-  if (lastLine.endsWith("ㆍ")) return true;
-  if (lastLine.endsWith(":")) return true;
-  if (lastLine.endsWith("：")) return true;
-
-  const suspiciousChinese =
-    /[\u4e00-\u9fff]{8,}/.test(value) &&
+  const suspiciousChinese = /[\u4e00-\u9fff]{8,}/.test(value) &&
     !/(김영언|심창보|코스트코|삼성|대구|대전|세종|혁신|상담사|큐레이터)/.test(value);
 
-  if (suspiciousChinese) return true;
-
-  return false;
+  return suspiciousChinese;
 }
 
 function convertGeminiError(message, status) {
   const msg = String(message || "");
 
-  if (status === 429 || msg.includes("Quota exceeded") || msg.includes("quota")) {
+  if (status === 429 || msg.includes("Quota exceeded") || msg.toLowerCase().includes("quota")) {
     return "Gemini 무료 요청 한도를 초과했습니다. 1분 정도 기다렸다가 다시 시도하거나, Vercel의 GEMINI_MODEL 값을 gemini-2.0-flash-lite로 변경해주세요.";
   }
 
@@ -316,7 +236,7 @@ function convertGeminiError(message, status) {
     return "Gemini API 키가 올바르지 않습니다. Vercel의 GEMINI_API_KEY 값을 다시 확인해주세요.";
   }
 
-  if (msg.includes("models/") && msg.includes("not found")) {
+  if (msg.includes("not found") && msg.includes("models/")) {
     return "Gemini 모델명을 찾을 수 없습니다. Vercel의 GEMINI_MODEL 값을 gemini-2.0-flash-lite로 변경해주세요.";
   }
 

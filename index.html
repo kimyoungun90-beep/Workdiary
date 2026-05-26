@@ -3,36 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>업무일지 자동 작성기 - 매출/수기 입력 전용</title>
+  <title>업무일지 매출 자동 정리기</title>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx-populate@1.21.0/browser/xlsx-populate.min.js"></script>
   <style>
-    :root { --bg:#f3f6fb; --card:#fff; --text:#142033; --muted:#667085; --line:#d9e0ea; --blue:#1f6fd1; --dark:#263244; --red:#c51f28; --green:#16833a; }
+    :root{--bg:#f3f6fb;--card:#fff;--text:#142033;--muted:#667085;--line:#d9e0ea;--blue:#1f6fd1;--dark:#263244;--red:#c51f28;--green:#16833a;}
     *{box-sizing:border-box} body{margin:0;font-family:Arial,'Malgun Gothic',sans-serif;background:var(--bg);color:var(--text)}
-    header{background:#0f172a;color:white;padding:18px 22px;position:sticky;top:0;z-index:5} header h1{margin:0;font-size:22px} header p{margin:6px 0 0;color:#cbd5e1;font-size:13px}
-    main{max-width:1180px;margin:24px auto 60px;padding:0 18px}.card{background:var(--card);border:1px solid #e5eaf2;border-radius:22px;padding:24px;margin-bottom:20px;box-shadow:0 10px 28px rgba(15,23,42,.06)}
-    h2{margin:0 0 16px;font-size:20px}.grid{display:grid;gap:12px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
-    label{display:block;font-weight:700;font-size:14px;margin-bottom:7px;color:#344054} input,select,textarea{width:100%;border:1px solid #ccd5e2;border-radius:13px;padding:12px 13px;font-size:15px;font-family:inherit;background:#fff}
-    textarea{min-height:120px;resize:vertical;line-height:1.45} input:focus,select:focus,textarea:focus{outline:none;border-color:#6ea8fe;box-shadow:0 0 0 3px rgba(31,111,209,.12)}
+    header{background:#0f172a;color:#fff;padding:18px 22px;position:sticky;top:0;z-index:5} header h1{margin:0;font-size:22px} header p{margin:6px 0 0;color:#cbd5e1;font-size:13px}
+    main{max-width:1220px;margin:24px auto 60px;padding:0 18px}.card{background:var(--card);border:1px solid #e5eaf2;border-radius:22px;padding:24px;margin-bottom:20px;box-shadow:0 10px 28px rgba(15,23,42,.06)}
+    h2{margin:0 0 16px;font-size:20px}.grid{display:grid;gap:12px}.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}.cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}
+    label{display:block;font-weight:700;font-size:14px;margin-bottom:7px;color:#344054} input,select,textarea{width:100%;border:1px solid #ccd5e2;border-radius:13px;padding:12px 13px;font-size:15px;font-family:inherit;background:#fff} textarea{min-height:118px;resize:vertical;line-height:1.45;white-space:pre-wrap} input:focus,select:focus,textarea:focus{outline:none;border-color:#6ea8fe;box-shadow:0 0 0 3px rgba(31,111,209,.12)}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}button{border:0;border-radius:13px;padding:12px 17px;font-size:15px;font-weight:800;cursor:pointer}.btn-primary{background:var(--blue);color:#fff}.btn-dark{background:var(--dark);color:#fff}.btn-soft{background:#eef4ff;color:#1e3a8a;border:1px solid #bcd0ff}.btn-red{background:var(--red);color:#fff}.btn-green{background:var(--green);color:#fff}
     .hint{color:var(--muted);font-size:13px;line-height:1.45}.status{margin-top:13px;font-weight:800;min-height:22px}.success{color:#15803d}.danger{color:#dc2626}.warn{color:#d97706}.info{color:#2563eb}
-    .btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center} button{border:0;border-radius:13px;padding:12px 17px;font-size:15px;font-weight:800;cursor:pointer}.btn-primary{background:var(--blue);color:#fff}.btn-dark{background:var(--dark);color:#fff}.btn-soft{background:#eef4ff;color:#1e3a8a;border:1px solid #bcd0ff}
-    table{width:100%;border-collapse:collapse;font-size:13px;background:#fff} th,td{border:1px solid #d7dee9;padding:7px;text-align:center} th{background:#d9d9d9;color:#111;font-weight:800}.scroll{overflow:auto;border-radius:14px;border:1px solid #e5eaf2;margin-top:10px}.section-row td{font-weight:800;text-align:left;background:#fff}.avg-light{background:#dbeaf7;font-weight:800}.avg-dark{background:#404040;color:#404040}.red{color:#ff0000;font-weight:800}.blue{color:#0057ff;font-weight:800}.bold{font-weight:800}
-    @media(max-width:900px){.cols-2,.cols-3,.cols-4{grid-template-columns:1fr}}
+    table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}th,td{border:1px solid #d7dee9;padding:8px;text-align:right}th:first-child,td:first-child{text-align:center}th{background:#eef4ff;color:#1f2a44}.scroll{overflow:auto;border-radius:14px;border:1px solid #e5eaf2;margin-top:10px}
+    .mini{font-size:12px;color:#667085}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#eef4ff;color:#1e3a8a;font-size:12px;font-weight:800;margin-left:6px}
+    @media(max-width:900px){.cols-2,.cols-3,.cols-4,.cols-5{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-<header>
-  <h1>업무일지 자동 작성기</h1>
-  <p>AI 없이 매출현황 정리와 사용자가 입력한 내용을 업무일지 양식에 자동 반영합니다.</p>
-</header>
+<header><h1>업무일지 매출 자동 정리기</h1><p>AI 없이 매출 파일과 수기 입력 내용을 업무일지 양식에 자동 반영합니다.</p></header>
 <main>
   <section class="card">
     <h2>1. 기본 정보</h2>
-    <div class="grid cols-4">
+    <div class="grid cols-5">
       <div><label>작성일자</label><input id="writeDate" type="date"></div>
       <div><label>업무일자</label><input id="workDate" type="date"></div>
       <div><label>주간 기간</label><input id="weekPeriod" type="text" placeholder="예: 5/25(월) ~ 5/31(일)"></div>
       <div><label>담당자</label><select id="manager"></select></div>
+      <div><label>매출 담당 점포</label><select id="storeSet"><option value="kim">김영언: 세종/대전/대구/혁신</option><option value="manager">선택 담당자 전체</option></select></div>
     </div>
   </section>
 
@@ -40,78 +38,171 @@
     <h2>2. 엑셀 파일 업로드</h2>
     <div class="grid cols-2">
       <div><label>업무일지 빈 양식</label><input id="templateFile" type="file" accept=".xlsx"><div class="hint">예: 양식 내용 미작성.xlsx</div></div>
-      <div><label>매출 자동취합 파일</label><input id="salesFile" type="file" accept=".xlsx,.xls"><div class="hint">보고용_요약 시트 기준으로 읽습니다.</div></div>
+      <div><label>매출 자동취합 파일</label><input id="salesFile" type="file" accept=".xlsx,.xls"><div class="hint">보고용_요약 시트를 읽어 CE/MX 매출표를 작성합니다.</div></div>
     </div>
     <div id="fileStatus" class="status"></div>
   </section>
 
   <section class="card">
-    <h2>3. 매출 현황 미리보기</h2>
-    <div class="hint">김영언 선택 시 세종점 / 대전점 / 대구점 / 혁신점 순서로 정리합니다. 단위는 <b>백만원</b>이며, 전국 평균 이상은 빨간색, 미만은 파란색으로 표시합니다.</div>
+    <h2>3. 매출 현황 미리보기 <span class="pill">단위: 백만 원</span></h2>
+    <div class="hint">실적/달성률은 전국 평균 이상 빨강, 평균 미만 파랑으로 표시됩니다. 엑셀에는 같은 기준으로 반영됩니다.</div>
     <div id="salesStatus" class="status"></div>
-    <div class="scroll"><table id="salesPreview"><tbody><tr><td>매출 파일을 업로드하면 여기에 표시됩니다.</td></tr></tbody></table></div>
+    <div class="scroll"><table id="salesTable"><thead></thead><tbody><tr><td style="text-align:center">매출 파일을 업로드하면 여기에 표시됩니다.</td></tr></tbody></table></div>
   </section>
 
   <section class="card">
     <h2>4. 업무일지 입력</h2>
     <div class="grid cols-2">
-      <div><label>중점 추진 업무</label><textarea id="priorityWork" placeholder="예: 매장 방문"></textarea></div>
+      <div><label>중점 추진 업무</label><textarea id="priorityWork" placeholder="예)&#10;■ 브랜드위크 행사 홍보 강화&#10;: 거래선 및 단기 상담사 대상 브랜드위크 홍보 인지 점검&#10;■ MX 세일즈 자료 실 사용 점검&#10;: 자료 인쇄&배포 진행으로 실 사용 여부 및 활용 빈도 점검"></textarea></div>
       <div><label>업무 내용</label><textarea id="workContent" placeholder="2. 업무 내용 영역에 들어갈 내용을 입력하세요."></textarea></div>
-      <div><label>금일 활동계획</label><textarea id="todayPlan" placeholder="입력한 내용을 그대로 반영합니다."></textarea></div>
-      <div><label>보고사항 및 특이사항</label><textarea id="specialNote" placeholder="입력한 내용을 그대로 반영합니다."></textarea></div>
+      <div><label>금일 활동계획</label><textarea id="todayPlan" placeholder="예)&#10;■ 사무실, 코스트코 대구점 방문&#10;: 각종 취합 업무 및 매출 지표 관리"></textarea></div>
+      <div><label>보고사항 및 특이사항</label><textarea id="specialNote" placeholder="예)&#10;■ 브랜드위크 6월 15일 ~ 6월 28일 예정&#10;■ 1차 행사안 정립(CM)"></textarea></div>
     </div>
   </section>
 
   <section class="card">
-    <h2>5. 생성</h2>
-    <div class="btns"><button id="excelBtn" class="btn-primary" type="button">엑셀 생성</button><button id="resetBtn" class="btn-soft" type="button">입력 초기화</button></div>
-    <div id="message" class="status"></div>
+    <h2>5. 주차별 저장 / 불러오기</h2>
+    <div class="hint">같은 PC·같은 브라우저에서만 저장됩니다. 양식 파일/매출 파일은 보안상 저장되지 않아 매번 업로드해야 합니다.</div>
+    <div class="btns" style="margin-top:12px">
+      <button id="saveWeekBtn" class="btn-green" type="button">현재 주차 저장</button>
+      <button id="loadWeekBtn" class="btn-soft" type="button">현재 주차 불러오기</button>
+      <button id="deleteWeekBtn" class="btn-red" type="button">현재 주차 삭제</button>
+      <button id="listWeekBtn" class="btn-dark" type="button">저장 목록 보기</button>
+    </div>
+    <div id="saveStatus" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>6. 생성</h2>
+    <div class="btns">
+      <button id="excelBtn" class="btn-primary" type="button">엑셀 생성</button>
+      <button id="clearBtn" class="btn-soft" type="button">입력값 초기화</button>
+    </div>
+    <div id="generateMessage" class="status"></div>
   </section>
 </main>
-<script>
-const MANAGERS=["김영언","심창보","김현래","조재현","윤재경"];
-const KIM_STORES=["세종점","대전점","대구점","혁신점"];
-let templateArrayBuffer=null;
-let rawSalesRows=[];
 
-document.addEventListener("DOMContentLoaded",()=>{
-  fillSelect("manager",MANAGERS,"김영언"); setDefaultDates();
-  $("manager").addEventListener("change",updateSalesPreview);
-  $("templateFile").addEventListener("change",handleTemplateFile);
-  $("salesFile").addEventListener("change",handleSalesFile);
-  $("excelBtn").addEventListener("click",createExcel);
-  $("resetBtn").addEventListener("click",()=>{["priorityWork","workContent","todayPlan","specialNote"].forEach(id=>$(id).value=""); show("입력 내용을 초기화했습니다.","success");});
-});
+<script>
+const MANAGERS = ["김영언","심창보","김현래","조재현","윤재경"];
+const KIM_STORES = ["세종점","대전점","대구점","혁신점"];
+let rawSalesRows = [];
+let templateArrayBuffer = null;
+
+document.addEventListener('DOMContentLoaded', init);
 function $(id){return document.getElementById(id)}
-function fillSelect(id,values,selected){$(id).innerHTML=values.map(v=>`<option value="${esc(v)}" ${v===selected?"selected":""}>${esc(v)}</option>`).join("")}
-function setDefaultDates(){const d=new Date();const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,"0");const day=String(d.getDate()).padStart(2,"0");$("writeDate").value=`${y}-${m}-${day}`;$("workDate").value=`${y}-${m}-${day}`;$("weekPeriod").value=getWeekPeriod(d)}
-function getWeekPeriod(date){const d=new Date(date);const day=d.getDay()||7;const mon=new Date(d);mon.setDate(d.getDate()-day+1);const sun=new Date(mon);sun.setDate(mon.getDate()+6);const w=["일","월","화","수","목","금","토"];const f=x=>`${x.getMonth()+1}/${x.getDate()}(${w[x.getDay()]})`;return `${f(mon)} ~ ${f(sun)}`}
-async function handleTemplateFile(e){const file=e.target.files?.[0]; if(!file) return; templateArrayBuffer=await file.arrayBuffer(); show(`업무일지 양식 업로드 완료: ${file.name}`,"success","fileStatus")}
-async function handleSalesFile(e){const file=e.target.files?.[0]; if(!file) return; try{const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:"array"});const sName=wb.SheetNames.includes("보고용_요약")?"보고용_요약":wb.SheetNames[0];const aoa=XLSX.utils.sheet_to_json(wb.Sheets[sName],{header:1,defval:""});rawSalesRows=parseSalesRows(aoa);updateSalesPreview();show(`매출 파일 업로드 완료: ${file.name} / ${rawSalesRows.length}개 행 읽음`,"success","fileStatus")}catch(err){rawSalesRows=[];updateSalesPreview();show(`매출 파일 읽기 실패: ${err.message||err}`,"danger","fileStatus")}}
-function parseSalesRows(aoa){const idx=aoa.findIndex(r=>String(r[0]).trim()==="담당"&&String(r[1]).trim()==="점포"); if(idx<0) return []; return aoa.slice(idx+2).filter(r=>String(r[0]).trim()&&String(r[1]).trim()).map(r=>({manager:String(r[0]||"").trim(),store:cleanStore(String(r[1]||"").trim()),totalTarget:num(r[2]),totalSales:num(r[3]),totalRank:num(r[4]),totalRate:rate(r[5]),totalRateRank:num(r[6]),ceTarget:num(r[7]),ceSales:num(r[8]),ceRank:num(r[9]),ceRate:rate(r[10]),ceRateRank:num(r[11]),mxTarget:num(r[12]),mxSales:num(r[13]),mxRank:num(r[14]),mxRate:rate(r[15]),mxRateRank:num(r[16])})).filter(r=>r.store)}
-function cleanStore(v){return v.replace(/^코스트코\s*/g,"").replace(/\s+/g,"").trim()}
-function getFilteredSalesRows(){const manager=$("manager").value;let rows=rawSalesRows.filter(r=>r.store&&r.store!=="총매출"&&r.store!=="총 매출"); if(manager==="김영언"){rows=rows.filter(r=>r.manager===manager&&KIM_STORES.includes(r.store)); rows.sort((a,b)=>KIM_STORES.indexOf(a.store)-KIM_STORES.indexOf(b.store)); return rows} return rows.filter(r=>r.manager===manager)}
-function calcAvgs(){const all=rawSalesRows.filter(r=>r.store&&r.store!=="총매출"&&r.store!=="총 매출");return {ce:{target:avg(all.map(r=>r.ceTarget)),sales:avg(all.map(r=>r.ceSales)),rate:avg(all.map(r=>r.ceRate))},mx:{target:avg(all.map(r=>r.mxTarget)),sales:avg(all.map(r=>r.mxSales)),rate:avg(all.map(r=>r.mxRate))}}}
-function updateSalesPreview(){const rows=getFilteredSalesRows();const table=$("salesPreview"); if(!rawSalesRows.length){table.innerHTML="<tbody><tr><td>매출 파일을 업로드하면 여기에 표시됩니다.</td></tr></tbody>";$("salesStatus").textContent="";return} if(!rows.length){table.innerHTML="<tbody><tr><td>선택한 담당자의 매출 데이터가 없습니다.</td></tr></tbody>";show("선택 담당자 기준 데이터 없음","warn","salesStatus");return} const avgs=calcAvgs(); table.innerHTML=buildPreviewSection("CE",rows,avgs.ce)+buildPreviewSection("MX",rows,avgs.mx); show(`${$("manager").value} 매출 ${rows.length}개 점포 반영 준비 완료`,"success","salesStatus")}
-function buildPreviewSection(type,rows,avgObj){const prefix=type.toLowerCase();let html=`<tbody><tr class="section-row"><td colspan="7">[${type} 매출]</td></tr><tr><th>점포명</th><th>목표</th><th>실적</th><th>달성률</th><th>매출 순위</th><th>달성률 순위</th><th>비고</th></tr>`; rows.forEach(r=>{const target=r[prefix+"Target"], sales=r[prefix+"Sales"], rt=r[prefix+"Rate"], rank=r[prefix+"Rank"], rateRank=r[prefix+"RateRank"];html+=`<tr><td class="bold">${esc(r.store)}</td><td class="bold">${one(target)}</td><td class="${sales>=avgObj.sales?"red":"blue"}">${one(sales)}</td><td class="${rt>=avgObj.rate?"red":"blue"}">${pct(rt)}</td><td class="bold">${rankText(rank)}</td><td class="blue">${rankText(rateRank)}</td><td></td></tr>`}); html+=`<tr><td class="avg-light">전국 평균</td><td class="avg-light">${one(avgObj.target)}</td><td class="avg-light">${one(avgObj.sales)}</td><td class="avg-light">${pct(avgObj.rate)}</td><td class="avg-dark"></td><td class="avg-dark"></td><td class="avg-dark"></td></tr></tbody>`; return html}
-async function createExcel(){try{if(!templateArrayBuffer) throw new Error("업무일지 빈 양식을 먼저 업로드하세요."); if(!rawSalesRows.length) throw new Error("매출 자동취합 파일을 먼저 업로드하세요."); const wb=await XlsxPopulate.fromDataAsync(templateArrayBuffer.slice(0)); const sheet=wb.sheet(0); sheet.cell("C5").value(dateDot($("writeDate").value)); sheet.cell("G5").value($("manager").value); sheet.cell("A7").value(`1. 주간 업무 목표 [ 기간 : ${$("weekPeriod").value} ]`); writeSalesToSheet(sheet); sheet.cell("C24").value($("priorityWork").value||""); sheet.cell("C33").value($("workContent").value||""); sheet.cell("C88").value($("todayPlan").value||""); sheet.cell("C94").value($("specialNote").value||""); const blob=await wb.outputAsync({type:"blob"}); downloadBlob(blob,`업무일지_${$("manager").value}_${$("workDate").value||$("writeDate").value}.xlsx`); show("엑셀 생성 완료: 매출현황을 백만원 단위/색상 기준으로 정리했습니다.","success")}catch(err){show(err.message||String(err),"danger")}}
-function writeSalesToSheet(sheet){const rows=getFilteredSalesRows();const avgs=calcAvgs(); sheet.cell("C10").value("[CE 매출]"); writeHeader(sheet,11); for(let i=0;i<4;i++) rows[i]?writeDataRow(sheet,12+i,rows[i],"ce",avgs.ce):clearRow(sheet,12+i); writeAvgRow(sheet,16,avgs.ce); sheet.cell("C17").value("[MX 매출]"); writeHeader(sheet,18); for(let i=0;i<4;i++) rows[i]?writeDataRow(sheet,19+i,rows[i],"mx",avgs.mx):clearRow(sheet,19+i); writeAvgRow(sheet,23,avgs.mx)}
-function writeHeader(sheet,row){const headers=["점포명","목표","실적","달성률","매출 순위","달성률 순위","비고"];headers.forEach((h,i)=>{const c=sheet.cell(row,3+i);c.value(h);style(c,{bold:true,fill:"D9D9D9",horizontalAlignment:"center",verticalAlignment:"center",fontColor:"000000"})})}
-function writeDataRow(sheet,row,r,p,av){const target=r[p+"Target"],sales=r[p+"Sales"],rt=r[p+"Rate"],rank=r[p+"Rank"],rateRank=r[p+"RateRank"]; const vals=[r.store,round1(target),round1(sales),pct(rt),rankText(rank),rankText(rateRank),""]; vals.forEach((v,i)=>sheet.cell(row,3+i).value(v)); for(let c=3;c<=9;c++) style(sheet.cell(row,c),{bold:true,horizontalAlignment:c===3?"center":"right",verticalAlignment:"center",fontColor:"000000"}); style(sheet.cell(row,5),{fontColor:sales>=av.sales?"FF0000":"0057FF",bold:true,horizontalAlignment:"right"}); style(sheet.cell(row,6),{fontColor:rt>=av.rate?"FF0000":"0057FF",bold:true,horizontalAlignment:"right"}); style(sheet.cell(row,8),{fontColor:"0057FF",bold:true,horizontalAlignment:"right"})}
-function writeAvgRow(sheet,row,av){const vals=["전국 평균",round1(av.target),round1(av.sales),pct(av.rate),"","",""]; vals.forEach((v,i)=>sheet.cell(row,3+i).value(v)); for(let c=3;c<=6;c++) style(sheet.cell(row,c),{bold:true,fill:"DDEBF7",fontColor:"000000",horizontalAlignment:c===3?"center":"right"}); for(let c=7;c<=9;c++) style(sheet.cell(row,c),{fill:"404040",fontColor:"404040"})}
-function clearRow(sheet,row){for(let c=3;c<=9;c++) sheet.cell(row,c).value("")}
-function style(cell,obj){try{cell.style(obj)}catch(e){}}
-function num(v){if(v===null||v===undefined||v==="") return 0;const n=Number(String(v).replace(/,/g,"").replace(/%/g,"").trim());return Number.isFinite(n)?n:0}
-function rate(v){const n=num(v);return n>1?n/100:n}
-function avg(a){const v=a.filter(x=>Number.isFinite(x)&&x!==0);return v.length?v.reduce((x,y)=>x+y,0)/v.length:0}
-function round1(v){return Math.round(num(v)*10)/10}
-function one(v){return round1(v).toFixed(1)}
-function pct(v){return `${(rate(v)*100).toFixed(1)}%`}
-function rankText(v){const n=Number(v);return Number.isFinite(n)&&n?`${Math.round(n)}위`:""}
-function dateDot(v){if(!v)return"";const p=v.split("-");return p.length===3?`${p[0]}.${p[1]}.${p[2]}`:v}
-function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
-function show(msg,type,id="message"){const el=$(id);if(!el)return;el.textContent=msg;el.className="status "+(type||"")}
-function esc(v){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;").replace(/'/g,"&#039;")}
+
+function init(){
+  fillSelect('manager', MANAGERS, '김영언');
+  setDefaultDates();
+  updateSalesTable();
+  $('templateFile').addEventListener('change', handleTemplateFile);
+  $('salesFile').addEventListener('change', handleSalesFile);
+  $('manager').addEventListener('change', updateSalesTable);
+  $('storeSet').addEventListener('change', updateSalesTable);
+  $('excelBtn').addEventListener('click', createExcel);
+  $('clearBtn').addEventListener('click', clearInputs);
+  $('saveWeekBtn').addEventListener('click', saveCurrentWeek);
+  $('loadWeekBtn').addEventListener('click', loadCurrentWeek);
+  $('deleteWeekBtn').addEventListener('click', deleteCurrentWeek);
+  $('listWeekBtn').addEventListener('click', listSavedWeeks);
+}
+
+function fillSelect(id, values, selected){$(id).innerHTML = values.map(v=>`<option value="${esc(v)}" ${v===selected?'selected':''}>${esc(v)}</option>`).join('')}
+function setDefaultDates(){const t=new Date();const y=t.getFullYear();const m=String(t.getMonth()+1).padStart(2,'0');const d=String(t.getDate()).padStart(2,'0');$('writeDate').value=`${y}-${m}-${d}`;$('workDate').value=`${y}-${m}-${d}`;$('weekPeriod').value=getWeekPeriod(t)}
+function getWeekPeriod(date){const d=new Date(date);const day=d.getDay()||7;const mon=new Date(d);mon.setDate(d.getDate()-day+1);const sun=new Date(mon);sun.setDate(mon.getDate()+6);const w=['일','월','화','수','목','금','토'];const f=x=>`${x.getMonth()+1}/${x.getDate()}(${w[x.getDay()]})`;return `${f(mon)} ~ ${f(sun)}`}
+
+async function handleTemplateFile(e){const f=e.target.files?.[0];if(!f)return;templateArrayBuffer=await f.arrayBuffer();setStatus('fileStatus',`업무일지 양식 업로드 완료: ${f.name}`,'success')}
+async function handleSalesFile(e){const f=e.target.files?.[0];if(!f)return;try{const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const sname=wb.SheetNames.includes('보고용_요약')?'보고용_요약':wb.SheetNames[0];const sh=wb.Sheets[sname];const aoa=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});rawSalesRows=parseSalesRows(aoa);updateSalesTable();setStatus('fileStatus',`매출 파일 업로드 완료: ${f.name} / ${rawSalesRows.length}개 행 읽음`,'success')}catch(err){rawSalesRows=[];updateSalesTable();setStatus('fileStatus',`매출 파일 읽기 실패: ${err.message||err}`,'danger')}}
+
+function parseSalesRows(aoa){
+  const hidx=aoa.findIndex(row=>{const j=row.map(normalizeKey).join('|');return j.includes('담당')&&(j.includes('점포')||j.includes('점포명'))});
+  if(hidx<0)return [];
+  const headers=aoa[hidx].map(normalizeKey);
+  return aoa.slice(hidx+1).filter(r=>r.some(v=>String(v).trim()!==''))
+    .map(row=>{const obj={};headers.forEach((h,i)=>obj[h]=row[i]);return normalizeSalesRow(obj)})
+    .filter(r=>r.store);
+}
+function normalizeKey(v){return String(v??'').replace(/\s+/g,' ').trim()}
+function pick(obj, keys){for(const k of keys){if(obj[k]!==undefined&&obj[k]!==null&&String(obj[k]).trim()!=='')return obj[k]}return ''}
+function cleanStoreName(v){return String(v||'').replace(/^코스트코\s*/,'').replace(/\s+/g,'').trim()}
+function normalizeSalesRow(obj){return {
+  manager:String(pick(obj,['담당','담당자'])||'').trim(), store:cleanStoreName(pick(obj,['점포','점포명'])),
+  ceTarget:normalizeMoney(pick(obj,['CE 목표','CE목표'])), ceSales:normalizeMoney(pick(obj,['CE 실적','CE 매출','CE실적','CE매출'])), ceRate:normalizeRate(pick(obj,['CE 달성률','CE달성률'])), ceRank:num(pick(obj,['CE 매출 순위','CE 순위','CE매출순위'])), ceRateRank:num(pick(obj,['CE 달성률 순위','CE 목표 달성 순위','CE목표달성순위'])),
+  mxTarget:normalizeMoney(pick(obj,['MX 목표','MX목표'])), mxSales:normalizeMoney(pick(obj,['MX 실적','MX 매출','MX실적','MX매출'])), mxRate:normalizeRate(pick(obj,['MX 달성률','MX달성률'])), mxRank:num(pick(obj,['MX 매출 순위','MX 순위','MX매출순위'])), mxRateRank:num(pick(obj,['MX 달성률 순위','MX 목표 달성 순위','MX목표달성순위']))
+}}
+
+function getFilteredSalesRows(){let rows=rawSalesRows.filter(r=>r.store&&r.store!=='총매출'&&r.store!=='총 매출');const m=$('manager').value;if($('storeSet').value==='kim'){rows=rows.filter(r=>r.manager===m&&KIM_STORES.includes(r.store));rows.sort((a,b)=>KIM_STORES.indexOf(a.store)-KIM_STORES.indexOf(b.store));return rows}return rows.filter(r=>r.manager===m)}
+function getAllStoreRows(){return rawSalesRows.filter(r=>r.store&&r.store!=='총매출'&&r.store!=='총 매출')}
+function getAverages(){const all=getAllStoreRows();return {ce:{target:avg(all.map(r=>r.ceTarget)),sales:avg(all.map(r=>r.ceSales)),rate:avg(all.map(r=>r.ceRate))},mx:{target:avg(all.map(r=>r.mxTarget)),sales:avg(all.map(r=>r.mxSales)),rate:avg(all.map(r=>r.mxRate))}}}
+function updateSalesTable(){const rows=getFilteredSalesRows();const avgData=getAverages();const thead=$('salesTable').querySelector('thead');const tbody=$('salesTable').querySelector('tbody');thead.innerHTML=`<tr><th>구분</th><th>점포명</th><th>목표</th><th>실적</th><th>달성률</th><th>매출 순위</th><th>달성률 순위</th></tr>`;if(!rawSalesRows.length){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center">매출 파일을 업로드하면 여기에 표시됩니다.</td></tr>`;$('salesStatus').textContent='';return}if(!rows.length){tbody.innerHTML=`<tr><td colspan="7" style="text-align:center">선택한 담당자의 매출 데이터가 없습니다.</td></tr>`;setStatus('salesStatus','선택 담당자 기준 데이터 없음','warn');return}
+  const trs=[];trs.push(...rows.map(r=>previewRow('CE',r,avgData.ce)));trs.push(avgPreviewRow('CE 전국 평균',avgData.ce));trs.push(...rows.map(r=>previewRow('MX',r,avgData.mx)));trs.push(avgPreviewRow('MX 전국 평균',avgData.mx));tbody.innerHTML=trs.join('');setStatus('salesStatus',`${$('manager').value} 매출 ${rows.length}개 점포 반영 준비 완료`,'success')}
+function previewRow(kind,r,av){const target=kind==='CE'?r.ceTarget:r.mxTarget;const sales=kind==='CE'?r.ceSales:r.mxSales;const rate=kind==='CE'?r.ceRate:r.mxRate;const rank=kind==='CE'?r.ceRank:r.mxRank;const rateRank=kind==='CE'?r.ceRateRank:r.mxRateRank;return `<tr><td>${kind}</td><td>${esc(r.store)}</td><td>${fmt1(target)}</td><td style="color:${sales>=av.sales?'red':'blue'};font-weight:bold">${fmt1(sales)}</td><td style="color:${rate>=av.rate?'red':'blue'};font-weight:bold">${fmtPct(rate,1)}</td><td>${rank?Math.round(rank)+'위':''}</td><td>${rateRank?Math.round(rateRank)+'위':''}</td></tr>`}
+function avgPreviewRow(label,av){return `<tr style="background:#888;color:white;font-weight:bold"><td colspan="2">${label}</td><td>${fmt1(av.target)}</td><td>${fmt1(av.sales)}</td><td>${fmtPct(av.rate,1)}</td><td></td><td></td></tr>`}
+
+function currentSaveKey(){return `workdiary:v10:${$('manager').value}:${$('weekPeriod').value}`}
+function collectInputs(){return {writeDate:$('writeDate').value,workDate:$('workDate').value,weekPeriod:$('weekPeriod').value,manager:$('manager').value,storeSet:$('storeSet').value,priorityWork:$('priorityWork').value,workContent:$('workContent').value,todayPlan:$('todayPlan').value,specialNote:$('specialNote').value,savedAt:new Date().toISOString()}}
+function applyInputs(d){if(!d)return;['writeDate','workDate','weekPeriod','manager','storeSet','priorityWork','workContent','todayPlan','specialNote'].forEach(id=>{if(d[id]!==undefined)$(id).value=d[id]});updateSalesTable()}
+function saveCurrentWeek(){localStorage.setItem(currentSaveKey(),JSON.stringify(collectInputs()));setStatus('saveStatus','현재 주차 입력값 저장 완료','success')}
+function loadCurrentWeek(){const raw=localStorage.getItem(currentSaveKey());if(!raw){setStatus('saveStatus','현재 담당자/주차로 저장된 내용이 없습니다.','warn');return}applyInputs(JSON.parse(raw));setStatus('saveStatus','현재 주차 입력값 불러오기 완료','success')}
+function deleteCurrentWeek(){localStorage.removeItem(currentSaveKey());setStatus('saveStatus','현재 주차 저장값 삭제 완료','success')}
+function listSavedWeeks(){const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('workdiary:v10:'))keys.push(k.replace('workdiary:v10:',''))}setStatus('saveStatus',keys.length?`저장 목록: ${keys.join(' / ')}`:'저장된 주차가 없습니다.',keys.length?'info':'warn')}
+function clearInputs(){['priorityWork','workContent','todayPlan','specialNote'].forEach(id=>$(id).value='');setStatus('generateMessage','입력값을 초기화했습니다.','success')}
+
+async function createExcel(){try{if(!templateArrayBuffer)throw new Error('업무일지 빈 양식을 먼저 업로드하세요.');if(typeof XlsxPopulate==='undefined')throw new Error('엑셀 생성 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');const wb=await XlsxPopulate.fromDataAsync(templateArrayBuffer.slice(0));const sheet=wb.sheet(0);
+  sheet.cell('C5').value(formatDateDot($('writeDate').value));sheet.cell('G5').value($('manager').value);sheet.cell('A7').value(`1. 주간 업무 목표 [ 기간 : ${$('weekPeriod').value} ]`);
+  formatBaseSheet(sheet);writeSalesToSheet(sheet);writeMergedTextAreas(sheet);
+  const blob=await wb.outputAsync({type:'blob'});downloadBlob(blob,`업무일지_${$('manager').value}_${$('workDate').value||$('writeDate').value}.xlsx`);setStatus('generateMessage','엑셀 생성 완료: 요청 디자인으로 매출/중점 추진 업무를 반영했습니다.','success')
+}catch(err){setStatus('generateMessage',err.message||String(err),'danger')}}
+
+function formatBaseSheet(sheet){
+  safeStyle(sheet.range('B8:I23'),{border:true,fontFamily:'맑은 고딕',fontSize:10,verticalAlignment:'center'});
+  safeStyle(sheet.range('B24:I29'),{border:true,fontFamily:'맑은 고딕',fontSize:10,verticalAlignment:'center'});
+  safeStyle(sheet.range('B30:I86'),{border:true,fontFamily:'맑은 고딕',fontSize:10});
+  safeStyle(sheet.range('B87:I92'),{border:true,fontFamily:'맑은 고딕',fontSize:10});
+  safeStyle(sheet.range('B93:I99'),{border:true,fontFamily:'맑은 고딕',fontSize:10});
+}
+function writeSalesToSheet(sheet){const rows=getFilteredSalesRows();const avgData=getAverages();
+  // Section title rows
+  for (let c=3;c<=9;c++){sheet.cell(10,c).value('');sheet.cell(17,c).value('')}
+  sheet.cell('C10').value('[CE 매출]');sheet.cell('I10').value('단위: 백만 원');
+  sheet.cell('C17').value('[MX 매출]');sheet.cell('I17').value('단위: 백만 원');
+  safeStyle(sheet.range('C10:I10'),{border:false,fill:'FFFFFF',fontColor:'000000',bold:true,fontSize:10,verticalAlignment:'center'});
+  safeStyle(sheet.range('C17:I17'),{border:false,fill:'FFFFFF',fontColor:'000000',bold:true,fontSize:10,verticalAlignment:'center'});
+  safeStyle(sheet.cell('C10'),{horizontalAlignment:'left'});safeStyle(sheet.cell('I10'),{horizontalAlignment:'right'});safeStyle(sheet.cell('C17'),{horizontalAlignment:'left'});safeStyle(sheet.cell('I17'),{horizontalAlignment:'right'});
+  writeSalesHeader(sheet,11);writeSalesHeader(sheet,18);
+  for(let i=0;i<4;i++){rows[i]?writeSalesRow(sheet,12+i,rows[i],'CE',avgData.ce):clearRow(sheet,12+i)}
+  writeAverageRow(sheet,16,avgData.ce);
+  for(let i=0;i<4;i++){rows[i]?writeSalesRow(sheet,19+i,rows[i],'MX',avgData.mx):clearRow(sheet,19+i)}
+  writeAverageRow(sheet,23,avgData.mx);
+  safeStyle(sheet.range('B9:B23'),{border:true,horizontalAlignment:'center',verticalAlignment:'center',fontColor:'000000',fill:'FFFFFF'});
+  sheet.cell('B9').value('매출 현황');
+}
+function writeSalesHeader(sheet,row){const headers=['점포명','목표','실적','달성률','매출 순위','달성률 순위','비고'];headers.forEach((h,i)=>sheet.cell(row,3+i).value(h));safeStyle(sheet.range(row,3,row,9),{fill:'D9D9D9',fontColor:'000000',bold:true,horizontalAlignment:'center',verticalAlignment:'center',border:false});}
+function writeSalesRow(sheet,row,r,kind,av){const target=kind==='CE'?r.ceTarget:r.mxTarget;const sales=kind==='CE'?r.ceSales:r.mxSales;const rate=kind==='CE'?r.ceRate:r.mxRate;const rank=kind==='CE'?r.ceRank:r.mxRank;const rateRank=kind==='CE'?r.ceRateRank:r.mxRateRank;const salesColor=sales>=av.sales?'FF0000':'0057FF';const rateColor=rate>=av.rate?'FF0000':'0057FF';
+  const vals=[r.store,fmt1(target),fmt1(sales),fmtPct(rate,1),formatRank(rank),formatRank(rateRank),''];vals.forEach((v,i)=>sheet.cell(row,3+i).value(v));
+  safeStyle(sheet.range(row,3,row,9),{fill:'FFFFFF',fontColor:'000000',bold:true,horizontalAlignment:'center',verticalAlignment:'center',border:{bottom:{style:'thin',color:'BFBFBF'}}});
+  safeStyle(sheet.cell(row,5),{fontColor:salesColor,bold:true});safeStyle(sheet.cell(row,6),{fontColor:rateColor,bold:true});
+}
+function writeAverageRow(sheet,row,av){const vals=['전국 평균',fmt1(av.target),fmt1(av.sales),fmtPct(av.rate,1),'','',''];vals.forEach((v,i)=>sheet.cell(row,3+i).value(v));safeStyle(sheet.range(row,3,row,9),{fill:'808080',fontColor:'FFFFFF',bold:true,horizontalAlignment:'center',verticalAlignment:'center',border:false});}
+function clearRow(sheet,row){for(let c=3;c<=9;c++)sheet.cell(row,c).value('');safeStyle(sheet.range(row,3,row,9),{fill:'FFFFFF',fontColor:'000000',border:{bottom:{style:'thin',color:'BFBFBF'}}});}
+
+function writeMergedTextAreas(sheet){
+  setLeftLabel(sheet,'B24:B29','중점 추진\n업무');safeMerge(sheet,'C24:I29');sheet.cell('C24').value($('priorityWork').value||'');safeStyle(sheet.range('C24:I29'),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,border:true});
+  setLeftLabel(sheet,'B30:B86','업무 내용');safeMerge(sheet,'C33:I86');sheet.cell('C33').value($('workContent').value||'');safeStyle(sheet.range('C33:I86'),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,border:true});
+  setLeftLabel(sheet,'B87:B92','금일\n활동계획');safeMerge(sheet,'C88:I92');sheet.cell('C88').value($('todayPlan').value||'');safeStyle(sheet.range('C88:I92'),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,border:true});
+  setLeftLabel(sheet,'B93:B99','보고사항 및\n특이사항');safeMerge(sheet,'C94:I99');sheet.cell('C94').value($('specialNote').value||'');safeStyle(sheet.range('C94:I99'),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,border:true});
+}
+function setLeftLabel(sheet,addr,text){safeMerge(sheet,addr);const first=addr.split(':')[0];sheet.cell(first).value(text);safeStyle(sheet.range(addr),{border:true,horizontalAlignment:'center',verticalAlignment:'center',fontFamily:'맑은 고딕',fontSize:10,fill:'FFFFFF',fontColor:'000000'});}
+function safeMerge(sheet,addr){try{sheet.range(addr).merged(true)}catch(e){}}
+function safeStyle(target,obj){try{target.style(obj)}catch(e){}}
+function setStatus(id,msg,type){const el=$(id);el.textContent=msg;el.className='status '+(type||'')}
+function num(v){if(v===null||v===undefined||v==='')return 0;const n=Number(String(v).replace(/,/g,'').replace(/%/g,'').trim());return Number.isFinite(n)?n:0}
+function normalizeMoney(v){return num(v)} function normalizeRate(v){const n=num(v);return n>1?n/100:n}
+function avg(arr){const valid=arr.filter(v=>Number.isFinite(v)&&v!==0);return valid.length?valid.reduce((a,b)=>a+b,0)/valid.length:0}
+function fmt1(v){const n=num(v);return n?Number(n).toFixed(0):''} function fmtPct(v,d=1){const n=normalizeRate(v);return n?`${(n*100).toFixed(d)}%`:''} function formatRank(v){const n=num(v);return n?`${Math.round(n)}위`:''}
+function formatDateDot(v){if(!v)return'';const p=v.split('-');return p.length===3?`${p[0]}.${p[1]}.${p[2]}`:v}
+function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
+function esc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
 </script>
 </body>
 </html>

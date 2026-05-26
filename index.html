@@ -115,20 +115,87 @@ async function handleTemplateFile(e){const f=e.target.files?.[0];if(!f)return;te
 async function handleSalesFile(e){const f=e.target.files?.[0];if(!f)return;try{const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const sname=wb.SheetNames.includes('보고용_요약')?'보고용_요약':wb.SheetNames[0];const sh=wb.Sheets[sname];const aoa=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});rawSalesRows=parseSalesRows(aoa);updateSalesTable();setStatus('fileStatus',`매출 파일 업로드 완료: ${f.name} / ${rawSalesRows.length}개 행 읽음`,'success')}catch(err){rawSalesRows=[];updateSalesTable();setStatus('fileStatus',`매출 파일 읽기 실패: ${err.message||err}`,'danger')}}
 
 function parseSalesRows(aoa){
-  const hidx=aoa.findIndex(row=>{const j=row.map(normalizeKey).join('|');return j.includes('담당')&&(j.includes('점포')||j.includes('점포명'))});
-  if(hidx<0)return [];
-  const headers=aoa[hidx].map(normalizeKey);
-  return aoa.slice(hidx+1).filter(r=>r.some(v=>String(v).trim()!==''))
-    .map(row=>{const obj={};headers.forEach((h,i)=>obj[h]=row[i]);return normalizeSalesRow(obj)})
-    .filter(r=>r.store);
+  // 매출 자동취합 파일의 보고용_요약은 2줄 헤더 구조임
+  // 4행: 담당 / 점포 / 총 매출 / CE 매출 / MX 매출
+  // 5행: 목표 / 매출 / 순위 / 달성률 / 순위
+  // 기존 방식처럼 한 줄 헤더만 읽으면 CE 목표가 CE 실적으로 밀리는 문제가 생김.
+  const hidx=aoa.findIndex(row=>{
+    const j=row.map(normalizeKey).join('|');
+    return j.includes('담당') && (j.includes('점포')||j.includes('점포명')) && (j.includes('CE 매출')||j.includes('MX 매출'));
+  });
+  if(hidx<0) return [];
+
+  const groupRow=aoa[hidx]||[];
+  const subRow=aoa[hidx+1]||[];
+  const headers=buildSalesHeaders(groupRow, subRow);
+
+  return aoa.slice(hidx+2)
+    .filter(r=>r.some(v=>String(v).trim()!==''))
+    .map(row=>{
+      const obj={};
+      headers.forEach((h,i)=>obj[h]=row[i]);
+      return normalizeSalesRow(obj);
+    })
+    .filter(r=>r.store && r.store !== '총매출' && r.store !== '총 매출');
 }
+
+function buildSalesHeaders(groupRow, subRow){
+  const headers=[];
+  let currentGroup='';
+  let lastSubByGroup={};
+
+  for(let i=0;i<Math.max(groupRow.length, subRow.length);i++){
+    const g=normalizeKey(groupRow[i]);
+    const sub=normalizeKey(subRow[i]);
+    if(g) currentGroup=g;
+
+    if(i===0 || g==='담당') { headers[i]='담당'; continue; }
+    if(i===1 || g==='점포' || g==='점포명') { headers[i]='점포'; continue; }
+
+    const group=currentGroup;
+    let key='';
+
+    if(group.includes('CE')) key = makeMetricKey('CE', sub, lastSubByGroup.CE);
+    else if(group.includes('MX')) key = makeMetricKey('MX', sub, lastSubByGroup.MX);
+    else if(group.includes('총')) key = makeMetricKey('총', sub, lastSubByGroup.TOTAL);
+    else key = sub || group || `COL${i}`;
+
+    if(group.includes('CE')) lastSubByGroup.CE=sub;
+    else if(group.includes('MX')) lastSubByGroup.MX=sub;
+    else if(group.includes('총')) lastSubByGroup.TOTAL=sub;
+
+    headers[i]=key;
+  }
+  return headers;
+}
+
+function makeMetricKey(prefix, sub, prevSub){
+  if(sub==='목표') return `${prefix} 목표`;
+  if(sub==='매출' || sub==='실적') return `${prefix} 실적`;
+  if(sub==='달성률') return `${prefix} 달성률`;
+  if(sub==='순위'){
+    if(prevSub==='달성률') return `${prefix} 달성률 순위`;
+    return `${prefix} 매출 순위`;
+  }
+  return `${prefix} ${sub}`.trim();
+}
+
 function normalizeKey(v){return String(v??'').replace(/\s+/g,' ').trim()}
 function pick(obj, keys){for(const k of keys){if(obj[k]!==undefined&&obj[k]!==null&&String(obj[k]).trim()!=='')return obj[k]}return ''}
 function cleanStoreName(v){return String(v||'').replace(/^코스트코\s*/,'').replace(/\s+/g,'').trim()}
 function normalizeSalesRow(obj){return {
-  manager:String(pick(obj,['담당','담당자'])||'').trim(), store:cleanStoreName(pick(obj,['점포','점포명'])),
-  ceTarget:normalizeMoney(pick(obj,['CE 목표','CE목표'])), ceSales:normalizeMoney(pick(obj,['CE 실적','CE 매출','CE실적','CE매출'])), ceRate:normalizeRate(pick(obj,['CE 달성률','CE달성률'])), ceRank:num(pick(obj,['CE 매출 순위','CE 순위','CE매출순위'])), ceRateRank:num(pick(obj,['CE 달성률 순위','CE 목표 달성 순위','CE목표달성순위'])),
-  mxTarget:normalizeMoney(pick(obj,['MX 목표','MX목표'])), mxSales:normalizeMoney(pick(obj,['MX 실적','MX 매출','MX실적','MX매출'])), mxRate:normalizeRate(pick(obj,['MX 달성률','MX달성률'])), mxRank:num(pick(obj,['MX 매출 순위','MX 순위','MX매출순위'])), mxRateRank:num(pick(obj,['MX 달성률 순위','MX 목표 달성 순위','MX목표달성순위']))
+  manager:String(pick(obj,['담당','담당자'])||'').trim(),
+  store:cleanStoreName(pick(obj,['점포','점포명'])),
+  ceTarget:normalizeMoney(pick(obj,['CE 목표','CE목표'])),
+  ceSales:normalizeMoney(pick(obj,['CE 실적','CE 매출','CE실적','CE매출'])),
+  ceRate:normalizeRate(pick(obj,['CE 달성률','CE달성률'])),
+  ceRank:num(pick(obj,['CE 매출 순위','CE 순위','CE매출순위'])),
+  ceRateRank:num(pick(obj,['CE 달성률 순위','CE 목표 달성 순위','CE목표달성순위'])),
+  mxTarget:normalizeMoney(pick(obj,['MX 목표','MX목표'])),
+  mxSales:normalizeMoney(pick(obj,['MX 실적','MX 매출','MX실적','MX매출'])),
+  mxRate:normalizeRate(pick(obj,['MX 달성률','MX달성률'])),
+  mxRank:num(pick(obj,['MX 매출 순위','MX 순위','MX매출순위'])),
+  mxRateRank:num(pick(obj,['MX 달성률 순위','MX 목표 달성 순위','MX목표달성순위']))
 }}
 
 function getFilteredSalesRows(){let rows=rawSalesRows.filter(r=>r.store&&r.store!=='총매출'&&r.store!=='총 매출');const m=$('manager').value;if($('storeSet').value==='kim'){rows=rows.filter(r=>r.manager===m&&KIM_STORES.includes(r.store));rows.sort((a,b)=>KIM_STORES.indexOf(a.store)-KIM_STORES.indexOf(b.store));return rows}return rows.filter(r=>r.manager===m)}
@@ -139,13 +206,13 @@ function updateSalesTable(){const rows=getFilteredSalesRows();const avgData=getA
 function previewRow(kind,r,av){const target=kind==='CE'?r.ceTarget:r.mxTarget;const sales=kind==='CE'?r.ceSales:r.mxSales;const rate=kind==='CE'?r.ceRate:r.mxRate;const rank=kind==='CE'?r.ceRank:r.mxRank;const rateRank=kind==='CE'?r.ceRateRank:r.mxRateRank;return `<tr><td>${kind}</td><td>${esc(r.store)}</td><td>${fmt1(target)}</td><td style="color:${sales>=av.sales?'red':'blue'};font-weight:bold">${fmt1(sales)}</td><td style="color:${rate>=av.rate?'red':'blue'};font-weight:bold">${fmtPct(rate,1)}</td><td>${rank?Math.round(rank)+'위':''}</td><td>${rateRank?Math.round(rateRank)+'위':''}</td></tr>`}
 function avgPreviewRow(label,av){return `<tr style="background:#888;color:white;font-weight:bold"><td colspan="2">${label}</td><td>${fmt1(av.target)}</td><td>${fmt1(av.sales)}</td><td>${fmtPct(av.rate,1)}</td><td></td><td></td></tr>`}
 
-function currentSaveKey(){return `workdiary:v11:${$('manager').value}:${$('weekPeriod').value}`}
+function currentSaveKey(){return `workdiary:v12:${$('manager').value}:${$('weekPeriod').value}`}
 function collectInputs(){return {writeDate:$('writeDate').value,workDate:$('workDate').value,weekPeriod:$('weekPeriod').value,manager:$('manager').value,storeSet:$('storeSet').value,priorityWork:$('priorityWork').value,workContent:$('workContent').value,todayPlan:$('todayPlan').value,specialNote:$('specialNote').value,savedAt:new Date().toISOString()}}
 function applyInputs(d){if(!d)return;['writeDate','workDate','weekPeriod','manager','storeSet','priorityWork','workContent','todayPlan','specialNote'].forEach(id=>{if(d[id]!==undefined)$(id).value=d[id]});updateSalesTable()}
 function saveCurrentWeek(){localStorage.setItem(currentSaveKey(),JSON.stringify(collectInputs()));setStatus('saveStatus','현재 주차 입력값 저장 완료','success')}
 function loadCurrentWeek(){const raw=localStorage.getItem(currentSaveKey());if(!raw){setStatus('saveStatus','현재 담당자/주차로 저장된 내용이 없습니다.','warn');return}applyInputs(JSON.parse(raw));setStatus('saveStatus','현재 주차 입력값 불러오기 완료','success')}
 function deleteCurrentWeek(){localStorage.removeItem(currentSaveKey());setStatus('saveStatus','현재 주차 저장값 삭제 완료','success')}
-function listSavedWeeks(){const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('workdiary:v11:'))keys.push(k.replace('workdiary:v11:',''))}setStatus('saveStatus',keys.length?`저장 목록: ${keys.join(' / ')}`:'저장된 주차가 없습니다.',keys.length?'info':'warn')}
+function listSavedWeeks(){const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('workdiary:v12:'))keys.push(k.replace('workdiary:v12:',''))}setStatus('saveStatus',keys.length?`저장 목록: ${keys.join(' / ')}`:'저장된 주차가 없습니다.',keys.length?'info':'warn')}
 function clearInputs(){['priorityWork','workContent','todayPlan','specialNote'].forEach(id=>$(id).value='');setStatus('generateMessage','입력값을 초기화했습니다.','success')}
 
 async function createExcel(){try{if(!templateArrayBuffer)throw new Error('업무일지 빈 양식을 먼저 업로드하세요.');if(typeof XlsxPopulate==='undefined')throw new Error('엑셀 생성 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');const wb=await XlsxPopulate.fromDataAsync(templateArrayBuffer.slice(0));const sheet=wb.sheet(0);

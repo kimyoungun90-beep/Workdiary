@@ -139,66 +139,100 @@ function updateSalesTable(){const rows=getFilteredSalesRows();const avgData=getA
 function previewRow(kind,r,av){const target=kind==='CE'?r.ceTarget:r.mxTarget;const sales=kind==='CE'?r.ceSales:r.mxSales;const rate=kind==='CE'?r.ceRate:r.mxRate;const rank=kind==='CE'?r.ceRank:r.mxRank;const rateRank=kind==='CE'?r.ceRateRank:r.mxRateRank;return `<tr><td>${kind}</td><td>${esc(r.store)}</td><td>${fmt1(target)}</td><td style="color:${sales>=av.sales?'red':'blue'};font-weight:bold">${fmt1(sales)}</td><td style="color:${rate>=av.rate?'red':'blue'};font-weight:bold">${fmtPct(rate,1)}</td><td>${rank?Math.round(rank)+'위':''}</td><td>${rateRank?Math.round(rateRank)+'위':''}</td></tr>`}
 function avgPreviewRow(label,av){return `<tr style="background:#888;color:white;font-weight:bold"><td colspan="2">${label}</td><td>${fmt1(av.target)}</td><td>${fmt1(av.sales)}</td><td>${fmtPct(av.rate,1)}</td><td></td><td></td></tr>`}
 
-function currentSaveKey(){return `workdiary:v10:${$('manager').value}:${$('weekPeriod').value}`}
+function currentSaveKey(){return `workdiary:v11:${$('manager').value}:${$('weekPeriod').value}`}
 function collectInputs(){return {writeDate:$('writeDate').value,workDate:$('workDate').value,weekPeriod:$('weekPeriod').value,manager:$('manager').value,storeSet:$('storeSet').value,priorityWork:$('priorityWork').value,workContent:$('workContent').value,todayPlan:$('todayPlan').value,specialNote:$('specialNote').value,savedAt:new Date().toISOString()}}
 function applyInputs(d){if(!d)return;['writeDate','workDate','weekPeriod','manager','storeSet','priorityWork','workContent','todayPlan','specialNote'].forEach(id=>{if(d[id]!==undefined)$(id).value=d[id]});updateSalesTable()}
 function saveCurrentWeek(){localStorage.setItem(currentSaveKey(),JSON.stringify(collectInputs()));setStatus('saveStatus','현재 주차 입력값 저장 완료','success')}
 function loadCurrentWeek(){const raw=localStorage.getItem(currentSaveKey());if(!raw){setStatus('saveStatus','현재 담당자/주차로 저장된 내용이 없습니다.','warn');return}applyInputs(JSON.parse(raw));setStatus('saveStatus','현재 주차 입력값 불러오기 완료','success')}
 function deleteCurrentWeek(){localStorage.removeItem(currentSaveKey());setStatus('saveStatus','현재 주차 저장값 삭제 완료','success')}
-function listSavedWeeks(){const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('workdiary:v10:'))keys.push(k.replace('workdiary:v10:',''))}setStatus('saveStatus',keys.length?`저장 목록: ${keys.join(' / ')}`:'저장된 주차가 없습니다.',keys.length?'info':'warn')}
+function listSavedWeeks(){const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('workdiary:v11:'))keys.push(k.replace('workdiary:v11:',''))}setStatus('saveStatus',keys.length?`저장 목록: ${keys.join(' / ')}`:'저장된 주차가 없습니다.',keys.length?'info':'warn')}
 function clearInputs(){['priorityWork','workContent','todayPlan','specialNote'].forEach(id=>$(id).value='');setStatus('generateMessage','입력값을 초기화했습니다.','success')}
 
 async function createExcel(){try{if(!templateArrayBuffer)throw new Error('업무일지 빈 양식을 먼저 업로드하세요.');if(typeof XlsxPopulate==='undefined')throw new Error('엑셀 생성 라이브러리를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.');const wb=await XlsxPopulate.fromDataAsync(templateArrayBuffer.slice(0));const sheet=wb.sheet(0);
   sheet.cell('C5').value(formatDateDot($('writeDate').value));sheet.cell('G5').value($('manager').value);sheet.cell('A7').value(`1. 주간 업무 목표 [ 기간 : ${$('weekPeriod').value} ]`);
   formatBaseSheet(sheet);writeSalesToSheet(sheet);writeMergedTextAreas(sheet);
-  const blob=await wb.outputAsync({type:'blob'});downloadBlob(blob,`업무일지_${$('manager').value}_${$('workDate').value||$('writeDate').value}.xlsx`);setStatus('generateMessage','엑셀 생성 완료: 요청 디자인으로 매출/중점 추진 업무를 반영했습니다.','success')
+  const blob=await wb.outputAsync({type:'blob'});downloadBlob(blob,`업무일지_${$('manager').value}_${$('workDate').value||$('writeDate').value}.xlsx`);setStatus('generateMessage','엑셀 생성 완료: 병합 오류 없이 매출/중점 추진 업무를 반영했습니다.','success')
 }catch(err){setStatus('generateMessage',err.message||String(err),'danger')}}
 
 function formatBaseSheet(sheet){
-  safeStyle(sheet.range('B8:I23'),{border:true,fontFamily:'맑은 고딕',fontSize:10,verticalAlignment:'center'});
-  safeStyle(sheet.range('B24:I29'),{border:true,fontFamily:'맑은 고딕',fontSize:10,verticalAlignment:'center'});
-  safeStyle(sheet.range('B30:I86'),{border:true,fontFamily:'맑은 고딕',fontSize:10});
-  safeStyle(sheet.range('B87:I92'),{border:true,fontFamily:'맑은 고딕',fontSize:10});
-  safeStyle(sheet.range('B93:I99'),{border:true,fontFamily:'맑은 고딕',fontSize:10});
+  // 기존 양식의 병합 구조는 절대 새로 만들지 않음.
+  // 병합을 다시 만들면 Excel에서 "제거된 레코드: 셀 병합" 오류가 발생할 수 있음.
+  safeStyle(sheet.range('B8:I23'),{fontFamily:'맑은 고딕',fontSize:10,verticalAlignment:'center'});
+  safeStyle(sheet.range('A24:I29'),{fontFamily:'맑은 고딕',fontSize:10,verticalAlignment:'center'});
+  safeStyle(sheet.range('A30:I86'),{fontFamily:'맑은 고딕',fontSize:10});
+  safeStyle(sheet.range('A87:I92'),{fontFamily:'맑은 고딕',fontSize:10});
+  safeStyle(sheet.range('A93:I99'),{fontFamily:'맑은 고딕',fontSize:10});
 }
 function writeSalesToSheet(sheet){const rows=getFilteredSalesRows();const avgData=getAverages();
-  // Section title rows
-  for (let c=3;c<=9;c++){sheet.cell(10,c).value('');sheet.cell(17,c).value('')}
-  sheet.cell('C10').value('[CE 매출]');sheet.cell('I10').value('단위: 백만 원');
-  sheet.cell('C17').value('[MX 매출]');sheet.cell('I17').value('단위: 백만 원');
-  safeStyle(sheet.range('C10:I10'),{border:false,fill:'FFFFFF',fontColor:'000000',bold:true,fontSize:10,verticalAlignment:'center'});
-  safeStyle(sheet.range('C17:I17'),{border:false,fill:'FFFFFF',fontColor:'000000',bold:true,fontSize:10,verticalAlignment:'center'});
-  safeStyle(sheet.cell('C10'),{horizontalAlignment:'left'});safeStyle(sheet.cell('I10'),{horizontalAlignment:'right'});safeStyle(sheet.cell('C17'),{horizontalAlignment:'left'});safeStyle(sheet.cell('I17'),{horizontalAlignment:'right'});
+  // 기존 양식의 병합 상태 유지: C10:I10, C17:I17은 이미 병합되어 있어 값만 입력
+  clearSalesValues(sheet);
+  sheet.cell('A10').value('매출 현황');
+  sheet.cell('C10').value('[CE 매출]                                                                           단위: 백만 원');
+  sheet.cell('C17').value('[MX 매출]                                                                           단위: 백만 원');
+  safeStyle(sheet.range('C10:I10'),{fill:'FFFFFF',fontColor:'000000',bold:true,fontSize:10,verticalAlignment:'center',horizontalAlignment:'left'});
+  safeStyle(sheet.range('C17:I17'),{fill:'FFFFFF',fontColor:'000000',bold:true,fontSize:10,verticalAlignment:'center',horizontalAlignment:'left'});
   writeSalesHeader(sheet,11);writeSalesHeader(sheet,18);
   for(let i=0;i<4;i++){rows[i]?writeSalesRow(sheet,12+i,rows[i],'CE',avgData.ce):clearRow(sheet,12+i)}
   writeAverageRow(sheet,16,avgData.ce);
   for(let i=0;i<4;i++){rows[i]?writeSalesRow(sheet,19+i,rows[i],'MX',avgData.mx):clearRow(sheet,19+i)}
   writeAverageRow(sheet,23,avgData.mx);
-  safeStyle(sheet.range('B9:B23'),{border:true,horizontalAlignment:'center',verticalAlignment:'center',fontColor:'000000',fill:'FFFFFF'});
-  sheet.cell('B9').value('매출 현황');
+  safeStyle(sheet.range('A10:B23'),{horizontalAlignment:'center',verticalAlignment:'center',fontColor:'000000',fill:'FFFFFF',bold:false});
 }
-function writeSalesHeader(sheet,row){const headers=['점포명','목표','실적','달성률','매출 순위','달성률 순위','비고'];headers.forEach((h,i)=>sheet.cell(row,3+i).value(h));safeStyle(sheet.range(row,3,row,9),{fill:'D9D9D9',fontColor:'000000',bold:true,horizontalAlignment:'center',verticalAlignment:'center',border:false});}
+function clearSalesValues(sheet){
+  // 매출 영역 값만 정리. 기존 병합/테두리는 보존.
+  ['C10','C17'].forEach(a=>sheet.cell(a).value(''));
+  for(let r=11;r<=23;r++) for(let c=3;c<=9;c++) sheet.cell(r,c).value('');
+}
+function writeSalesHeader(sheet,row){const headers=['점포명','목표','실적','달성률','매출 순위','달성률 순위','비고'];headers.forEach((h,i)=>sheet.cell(row,3+i).value(h));safeStyle(sheet.range(row,3,row,9),{fill:'D9D9D9',fontColor:'000000',bold:true,horizontalAlignment:'center',verticalAlignment:'center'});}
 function writeSalesRow(sheet,row,r,kind,av){const target=kind==='CE'?r.ceTarget:r.mxTarget;const sales=kind==='CE'?r.ceSales:r.mxSales;const rate=kind==='CE'?r.ceRate:r.mxRate;const rank=kind==='CE'?r.ceRank:r.mxRank;const rateRank=kind==='CE'?r.ceRateRank:r.mxRateRank;const salesColor=sales>=av.sales?'FF0000':'0057FF';const rateColor=rate>=av.rate?'FF0000':'0057FF';
-  const vals=[r.store,fmt1(target),fmt1(sales),fmtPct(rate,1),formatRank(rank),formatRank(rateRank),''];vals.forEach((v,i)=>sheet.cell(row,3+i).value(v));
-  safeStyle(sheet.range(row,3,row,9),{fill:'FFFFFF',fontColor:'000000',bold:true,horizontalAlignment:'center',verticalAlignment:'center',border:{bottom:{style:'thin',color:'BFBFBF'}}});
+  const vals=[r.store,fmt0(target),fmt0(sales),fmtPct(rate,1),formatRank(rank),formatRank(rateRank),''];vals.forEach((v,i)=>sheet.cell(row,3+i).value(v));
+  safeStyle(sheet.range(row,3,row,9),{fill:'FFFFFF',fontColor:'000000',bold:true,horizontalAlignment:'center',verticalAlignment:'center'});
   safeStyle(sheet.cell(row,5),{fontColor:salesColor,bold:true});safeStyle(sheet.cell(row,6),{fontColor:rateColor,bold:true});
 }
-function writeAverageRow(sheet,row,av){const vals=['전국 평균',fmt1(av.target),fmt1(av.sales),fmtPct(av.rate,1),'','',''];vals.forEach((v,i)=>sheet.cell(row,3+i).value(v));safeStyle(sheet.range(row,3,row,9),{fill:'808080',fontColor:'FFFFFF',bold:true,horizontalAlignment:'center',verticalAlignment:'center',border:false});}
-function clearRow(sheet,row){for(let c=3;c<=9;c++)sheet.cell(row,c).value('');safeStyle(sheet.range(row,3,row,9),{fill:'FFFFFF',fontColor:'000000',border:{bottom:{style:'thin',color:'BFBFBF'}}});}
+function writeAverageRow(sheet,row,av){const vals=['전국 평균',fmt0(av.target),fmt0(av.sales),fmtPct(av.rate,1),'','',''];vals.forEach((v,i)=>sheet.cell(row,3+i).value(v));safeStyle(sheet.range(row,3,row,9),{fill:'808080',fontColor:'FFFFFF',bold:true,horizontalAlignment:'center',verticalAlignment:'center'});}
+function clearRow(sheet,row){for(let c=3;c<=9;c++)sheet.cell(row,c).value('');safeStyle(sheet.range(row,3,row,9),{fill:'FFFFFF',fontColor:'000000'});}
 
 function writeMergedTextAreas(sheet){
-  setLeftLabel(sheet,'B24:B29','중점 추진\n업무');safeMerge(sheet,'C24:I29');sheet.cell('C24').value($('priorityWork').value||'');safeStyle(sheet.range('C24:I29'),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,border:true});
-  setLeftLabel(sheet,'B30:B86','업무 내용');safeMerge(sheet,'C33:I86');sheet.cell('C33').value($('workContent').value||'');safeStyle(sheet.range('C33:I86'),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,border:true});
-  setLeftLabel(sheet,'B87:B92','금일\n활동계획');safeMerge(sheet,'C88:I92');sheet.cell('C88').value($('todayPlan').value||'');safeStyle(sheet.range('C88:I92'),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,border:true});
-  setLeftLabel(sheet,'B93:B99','보고사항 및\n특이사항');safeMerge(sheet,'C94:I99');sheet.cell('C94').value($('specialNote').value||'');safeStyle(sheet.range('C94:I99'),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,border:true});
+  // 기존 양식은 C24:I24, C25:I25처럼 "행별 병합" 상태임.
+  // 따라서 새로 병합하지 않고 줄 단위로 각 행에 입력해야 파일이 깨지지 않음.
+  setLeftLabel(sheet,'A24:B29','중점 추진\n업무');
+  setTextLines(sheet,24,29,$('priorityWork').value||'');
+
+  setLeftLabel(sheet,'A30:B86','업무 내용');
+  setTextLines(sheet,33,86,$('workContent').value||'');
+
+  setLeftLabel(sheet,'A88:B92','금일\n활동계획');
+  setTextArea(sheet,'C88:I92',$('todayPlan').value||'');
+
+  setLeftLabel(sheet,'A93:B99','보고사항 및\n특이사항');
+  setTextArea(sheet,'C94:I97',$('specialNote').value||'');
 }
-function setLeftLabel(sheet,addr,text){safeMerge(sheet,addr);const first=addr.split(':')[0];sheet.cell(first).value(text);safeStyle(sheet.range(addr),{border:true,horizontalAlignment:'center',verticalAlignment:'center',fontFamily:'맑은 고딕',fontSize:10,fill:'FFFFFF',fontColor:'000000'});}
-function safeMerge(sheet,addr){try{sheet.range(addr).merged(true)}catch(e){}}
+function setTextLines(sheet,startRow,endRow,text){
+  const maxLines=endRow-startRow+1;
+  let lines=String(text||'').replace(/\r/g,'').split('\n');
+  if(lines.length>maxLines){
+    const head=lines.slice(0,maxLines-1);
+    const tail=lines.slice(maxLines-1).join('\n');
+    lines=[...head,tail];
+  }
+  for(let i=0;i<maxLines;i++){
+    const row=startRow+i;
+    sheet.cell(row,3).value(lines[i]||'');
+    safeStyle(sheet.range(row,3,row,9),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,fill:'FFFFFF',fontColor:'000000'});
+  }
+}
+function setTextArea(sheet,addr,text){
+  const first=addr.split(':')[0];
+  sheet.cell(first).value(text);
+  safeStyle(sheet.range(addr),{wrapText:true,verticalAlignment:'top',horizontalAlignment:'left',fontFamily:'맑은 고딕',fontSize:10,fill:'FFFFFF',fontColor:'000000'});
+}
+function setLeftLabel(sheet,addr,text){const first=addr.split(':')[0];sheet.cell(first).value(text);safeStyle(sheet.range(addr),{horizontalAlignment:'center',verticalAlignment:'center',fontFamily:'맑은 고딕',fontSize:10,fill:'FFFFFF',fontColor:'000000'});}
 function safeStyle(target,obj){try{target.style(obj)}catch(e){}}
 function setStatus(id,msg,type){const el=$(id);el.textContent=msg;el.className='status '+(type||'')}
 function num(v){if(v===null||v===undefined||v==='')return 0;const n=Number(String(v).replace(/,/g,'').replace(/%/g,'').trim());return Number.isFinite(n)?n:0}
 function normalizeMoney(v){return num(v)} function normalizeRate(v){const n=num(v);return n>1?n/100:n}
 function avg(arr){const valid=arr.filter(v=>Number.isFinite(v)&&v!==0);return valid.length?valid.reduce((a,b)=>a+b,0)/valid.length:0}
+function fmt0(v){const n=num(v);return n?String(Math.round(n)):''}
 function fmt1(v){const n=num(v);return n?Number(n).toFixed(0):''} function fmtPct(v,d=1){const n=normalizeRate(v);return n?`${(n*100).toFixed(d)}%`:''} function formatRank(v){const n=num(v);return n?`${Math.round(n)}위`:''}
 function formatDateDot(v){if(!v)return'';const p=v.split('-');return p.length===3?`${p[0]}.${p[1]}.${p[2]}`:v}
 function downloadBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}

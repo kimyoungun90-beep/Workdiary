@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/28248096/README.md)
 # 업무일지 자동 작성기 - 매출/수기 입력 전용
 
 AI 호출 없이 매출 자동취합 파일의 보고용_요약 시트를 읽어 업무일지 양식에 반영합니다.
